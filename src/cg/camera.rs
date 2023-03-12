@@ -4,6 +4,8 @@
 
 use self::Movement::*;
 use cgmath;
+use cgmath::frustum;
+use cgmath::perspective;
 use cgmath::prelude::*;
 use cgmath::vec3;
 use cgmath::Deg;
@@ -22,7 +24,7 @@ pub enum Movement {
     RollLeft,
 }
 
-const SPEED: f32 = 2.5;
+const SPEED: f32 = 25.;
 const SENSITIVTY: f32 = 0.1;
 const ZOOM: f32 = 45.0;
 
@@ -46,7 +48,7 @@ impl Default for Camera {
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),
             view_matrix: Matrix4::from_axis_angle(Vector3::unit_z(), Deg(180.0)),
-            projection_matrix: Matrix4::from_axis_angle(Vector3::unit_z(), Deg(0.0)),
+            projection_matrix: perspective(Deg(45.0), 1.0, 0.1, 100.0),
             movement_speed: SPEED,
             mouse_sensitivity: SENSITIVTY,
             zoom: ZOOM,
@@ -57,18 +59,19 @@ impl Default for Camera {
 impl Camera {
     /// Returns the view matrix calculated using Eular Angles and the LookAt Matrix
     pub fn get_view_matrix(&self) -> Matrix4 {
-        Matrix4::look_at(self.position, self.position + self.front, self.up)
+        self.view_matrix
     }
 
     fn update_view_matrix(&mut self) {
         self.view_matrix = Matrix4::look_at(self.position, self.position + self.front, self.up);
-        self.projection_matrix = self.projection_matrix * self.view_matrix;
+        //self.projection_matrix = self.projection_matrix * self.view_matrix;
     }
 
     pub fn rotate(&mut self, rotation: Quaternion<f32>) {
         self.front = (rotation * self.front).normalize();
         self.right = (rotation * self.right).normalize();
         self.up = (rotation * self.up).normalize();
+        self.update_view_matrix();
     }
 
     pub fn pitch(&mut self, amount: f32) {
@@ -116,6 +119,7 @@ impl Camera {
             self.roll(-0.1);
         }
         self.debug_print();
+        self.update_view_matrix();
     }
 
     pub fn debug_print(&self) {}
@@ -125,6 +129,7 @@ impl Camera {
         yoffset *= self.mouse_sensitivity;
         self.pitch(yoffset);
         self.yaw(-xoffset);
+        self.update_view_matrix();
     }
 
     pub fn process_mouse_scroll(&mut self, yoffset: f32) {
@@ -132,5 +137,6 @@ impl Camera {
             self.zoom -= yoffset;
         }
         self.zoom = self.zoom.clamp(1.0, 45.0);
+        self.update_view_matrix();
     }
 }

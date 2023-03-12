@@ -135,7 +135,8 @@ fn main() {
 
     let mut camera = Camera::default();
     let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
-    let model2 = Model::new("resources/objects/mig21/mig21.obj");
+    let mig21 = Model::new("resources/objects/mig21/mig21.obj");
+    let terrain = Model::new("resources/objects/terrain/terrain.obj");
 
     while !window.should_close() {
         let current_frame = glfw.get_time() as f32;
@@ -160,7 +161,7 @@ fn main() {
                 Deg(camera.zoom),
                 SCR_WIDTH as f32 / SCR_HEIGHT as f32,
                 0.1,
-                100.0,
+                1000.0,
             );
 
             let view = camera.get_view_matrix();
@@ -171,7 +172,12 @@ fn main() {
             model_matrix = model_matrix * Matrix4::from_scale(1.0);
             model_matrix = model_matrix * Matrix4::from_axis_angle(Vector3::unit_x(), Deg(45.));
             shader.set_mat4(c_str!("model"), &model_matrix);
-            model2.draw(&shader);
+            mig21.draw(&shader);
+
+            let mut model_matrix = Matrix4::<f32>::from_translation(vec3(0.0, -10.0, 0.0));
+            model_matrix = model_matrix * Matrix4::from_scale(100.0);
+            shader.set_mat4(c_str!("model"), &model_matrix);
+            terrain.draw(&shader);
         }
 
         window.swap_buffers();
