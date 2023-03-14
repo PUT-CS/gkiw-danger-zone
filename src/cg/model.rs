@@ -6,7 +6,7 @@ use image;
 use image::DynamicImage::*;
 use image::GenericImage;
 use crate::cg::shader::Shader;
-use std::ffi::CString;
+use std::ffi::{CString, OsStr};
 use std::mem::size_of;
 use std::os::raw::c_void;
 use std::path::Path;
@@ -53,13 +53,6 @@ impl Default for Texture {
 }
 
 #[derive(Default)]
-enum ModelType {
-    #[default]
-    Object,
-    Terrain,
-}
-
-#[derive(Default)]
 pub struct Model {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
@@ -69,12 +62,10 @@ pub struct Model {
     ebo: u32,
     pub textures_loaded: Vec<Texture>,
     directory: String,
-    type_: ModelType,
 }
 
 impl Model {
-    /// constructor, expects a filepath to a 3D model.
-    pub fn new(path: &str) -> Model {
+    pub fn new<T>(path: T) -> Model where T: ToString + AsRef<OsStr> {
         let mut model = Model {
             vertices: vec![],
             indices: vec![],
@@ -84,9 +75,7 @@ impl Model {
             ebo: 0,
             textures_loaded: vec![],
             directory: "".to_string(),
-            type_: ModelType::Object,
         };
-        // now that we have all the required data, set the vertex buffers and its attribute pointers.
         model.load_model(path);
         unsafe { model.setup_mesh() }
         model
@@ -100,8 +89,6 @@ impl Model {
         let mut height_nr = 0;
         for (i, texture) in self.textures.iter().enumerate() {
             gl::ActiveTexture(gl::TEXTURE0 + i as u32);
-            // active proper texture unit before binding
-            // retrieve texture number (the N in diffuse_textureN)
             let name = &texture.type_;
             let number = match name.as_str() {
                 "texture_diffuse" => {
@@ -147,8 +134,8 @@ impl Model {
     }
 
     // load a model from file and stores the resulting meshes in the meshes vector.
-    fn load_model(&mut self, path: &str) {
-        let path = Path::new(path);
+    fn load_model<T>(&mut self, path: T) where T: ToString + AsRef<OsStr> {
+        let path = Path::new(&path);
 
         self.directory = path.parent().unwrap_or_else(|| Path::new("")).to_str().unwrap().into();
         let obj = tobj::load_obj(path);

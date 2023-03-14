@@ -1,10 +1,11 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(dead_code)]
+//#![allow(dead_code)]
+
+use crate::game::flight::steerable::Steerable;
 
 use self::Movement::*;
 use cgmath;
-use cgmath::frustum;
 use cgmath::perspective;
 use cgmath::prelude::*;
 use cgmath::vec3;
@@ -56,6 +57,37 @@ impl Default for Camera {
     }
 }
 
+impl Steerable for Camera {
+    fn pitch(&mut self, amount: f32) {
+        let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
+        self.front = (rotation * self.front).normalize();
+        if self.right.cross(self.front).dot(self.up) < 0.0 {
+            self.up *= -1.0;
+        }
+        self.update_view_matrix();
+    }
+
+    fn yaw(&mut self, amount: f32) {
+        let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
+        self.front = (rotation * self.front).normalize();
+        self.right = (rotation * self.right).normalize();
+        self.update_view_matrix();
+    }
+
+    fn roll(&mut self, amount: f32) {
+        let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
+        self.right = (rotation * self.right).normalize();
+        self.up = (rotation * self.up).normalize();
+        self.update_view_matrix();
+    }
+    fn throttle_up(&mut self, amount: f32) {
+        todo!()
+    }
+    fn throttle_down(&mut self, amount: f32) {
+        todo!()
+    }
+}
+
 impl Camera {
     /// Returns the view matrix calculated using Eular Angles and the LookAt Matrix
     pub fn get_view_matrix(&self) -> Matrix4 {
@@ -65,36 +97,6 @@ impl Camera {
     fn update_view_matrix(&mut self) {
         self.view_matrix = Matrix4::look_at(self.position, self.position + self.front, self.up);
         //self.projection_matrix = self.projection_matrix * self.view_matrix;
-    }
-
-    pub fn rotate(&mut self, rotation: Quaternion<f32>) {
-        self.front = (rotation * self.front).normalize();
-        self.right = (rotation * self.right).normalize();
-        self.up = (rotation * self.up).normalize();
-        self.update_view_matrix();
-    }
-
-    pub fn pitch(&mut self, amount: f32) {
-        let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
-        self.front = (rotation * self.front).normalize();
-        if self.right.cross(self.front).dot(self.up) < 0.0 {
-            self.up *= -1.0;
-        }
-        self.update_view_matrix();
-    }
-
-    pub fn yaw(&mut self, amount: f32) {
-        let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
-        self.front = (rotation * self.front).normalize();
-        self.right = (rotation * self.right).normalize();
-        self.update_view_matrix();
-    }
-
-    pub fn roll(&mut self, amount: f32) {
-        let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
-        self.right = (rotation * self.right).normalize();
-        self.up = (rotation * self.up).normalize();
-        self.update_view_matrix();
     }
 
     /// Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
@@ -122,14 +124,17 @@ impl Camera {
         self.update_view_matrix();
     }
 
-    pub fn debug_print(&self) {}
+    pub fn debug_print(&self) {
+        dbg!()
+    }
 
     pub fn process_mouse_movement(&mut self, mut xoffset: f32, mut yoffset: f32) {
         xoffset *= self.mouse_sensitivity;
         yoffset *= self.mouse_sensitivity;
-        self.pitch(yoffset);
         self.yaw(-xoffset);
+        self.pitch(yoffset);
         self.update_view_matrix();
+        self.debug_print();
     }
 
     pub fn process_mouse_scroll(&mut self, yoffset: f32) {
