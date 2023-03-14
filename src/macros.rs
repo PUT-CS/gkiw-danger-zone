@@ -1,4 +1,5 @@
 #![macro_use]
+
 /// Macro to get c strings from literals without runtime overhead
 /// Literal must not contain any interior nul bytes!
 macro_rules! c_str {
@@ -13,5 +14,18 @@ macro_rules! c_str {
 macro_rules! offset_of {
     ($ty:ty, $field:ident) => {
         &(*(ptr::null() as *const $ty)).$field as *const _ as usize
+    };
+}
+
+/// Generate getter methods for references to fields of a struct
+macro_rules! gen_ref_getters {
+    {$t:ty, $($field:ident -> $type:ty,)+} => {
+        impl $t {
+            $(
+                pub fn $field(&self) -> $type {
+                    &self.$field
+                }
+            )+
+        }
     };
 }

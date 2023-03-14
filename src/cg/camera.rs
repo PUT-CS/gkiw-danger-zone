@@ -61,9 +61,12 @@ impl Steerable for Camera {
     fn pitch(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
         self.front = (rotation * self.front).normalize();
-        if self.right.cross(self.front).dot(self.up) < 0.0 {
-            self.up *= -1.0;
-        }
+        // if self.right.cross(self.front).dot(self.up) < 0.0 {
+        //     self.up *= -1.0;
+        // }
+        // problematic
+        // we need to compensate for 
+        self.up = (rotation * self.up).normalize();
         self.update_view_matrix();
     }
 
@@ -89,8 +92,7 @@ impl Steerable for Camera {
 }
 
 impl Camera {
-    /// Returns the view matrix calculated using Eular Angles and the LookAt Matrix
-    pub fn get_view_matrix(&self) -> Matrix4 {
+    pub fn view_matrix(&self) -> Matrix4 {
         self.view_matrix
     }
 
@@ -125,7 +127,10 @@ impl Camera {
     }
 
     pub fn debug_print(&self) {
-        dbg!()
+        dbg!(self.up);
+        dbg!(self.front);
+        dbg!(self.right);
+        println!("----------------")
     }
 
     pub fn process_mouse_movement(&mut self, mut xoffset: f32, mut yoffset: f32) {
@@ -133,6 +138,9 @@ impl Camera {
         yoffset *= self.mouse_sensitivity;
         self.yaw(-xoffset);
         self.pitch(yoffset);
+        
+        // compensate for unwanted roll here
+        
         self.update_view_matrix();
         self.debug_print();
     }

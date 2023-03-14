@@ -1,26 +1,15 @@
 #![allow(dead_code)]
 
-use super::{spec::AircraftSpec, steerable::Steerable};
+use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
 use crate::cg::model::Model;
 pub use paste::paste;
 use std::collections::HashMap;
-
-macro_rules! gen_ref_getters {
-    {$t:ty, $($field:ident -> $type:ty,)+} => {
-        impl $t {
-            $(
-                pub fn $field(&self) -> $type {
-                    &self.$field
-                }
-            )+
-        }
-    };
-}
+use AircraftKind::*;
 
 pub struct Aircraft {
     model: Model,
     spec: AircraftSpec,
-    control_surfaces: ControlSurfaces,
+    controls: Controls,
     kind: AircraftKind,
 }
 
@@ -31,27 +20,10 @@ gen_ref_getters! {
     kind -> &AircraftKind,
 }
 
-pub struct ControlSurfaces {
-    pitch_bias: f32,
-    yaw_bias: f32,
-    roll_bias: f32,
-}
-
-impl Default for ControlSurfaces {
-    fn default() -> Self {
-        ControlSurfaces {
-            pitch_bias: 0.,
-            yaw_bias: 0.,
-            roll_bias: 0.,
-        }
-    }
-}
-
 #[derive(Hash, PartialEq, Eq)]
 pub enum AircraftKind {
     Mig21,
 }
-use AircraftKind::*;
 
 use lazy_static::lazy_static;
 lazy_static! {
@@ -70,7 +42,7 @@ impl Aircraft {
                 .expect("Blueprint not found for kind")
                 .to_owned(),
             kind,
-            control_surfaces: ControlSurfaces::default(),
+            controls: Controls::default(),
         }
     }
 }

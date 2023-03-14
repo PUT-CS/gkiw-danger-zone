@@ -99,12 +99,12 @@ fn main() {
                 2000.0,
             );
 
-            let view = camera.get_view_matrix();
+            let view = camera.view_matrix();
             shader.set_mat4(c_str!("projection"), &projection);
             shader.set_mat4(c_str!("view"), &view);
 
             let mut model_matrix = Matrix4::<f32>::from_translation(vec3(0.0, 0.0, -1.0));
-            model_matrix = model_matrix * Matrix4::from_scale(1.0);
+            model_matrix = model_matrix * Matrix4::from_scale(glfw.get_time() as f32);
             model_matrix = model_matrix * Matrix4::from_axis_angle(Vector3::unit_x(), Deg(0.));
             shader.set_mat4(c_str!("model"), &model_matrix);
             mig21.draw(&shader);
