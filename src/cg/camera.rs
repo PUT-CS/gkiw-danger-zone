@@ -1,10 +1,6 @@
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-//#![allow(dead_code)]
-
 use crate::game::flight::steerable::Steerable;
-
-use self::Movement::*;
+use crate::SCR_HEIGHT;
+use crate::SCR_WIDTH;
 use cgmath;
 use cgmath::perspective;
 use cgmath::prelude::*;
@@ -17,10 +13,10 @@ type Matrix4 = cgmath::Matrix4<f32>;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum Movement {
-    Forward,
-    Backward,
-    Left,
-    Right,
+    PitchUp,
+    PitchDown,
+    YawLeft,
+    YawRight,
     RollRight,
     RollLeft,
 }
@@ -30,15 +26,15 @@ const SENSITIVTY: f32 = 0.1;
 const ZOOM: f32 = 45.0;
 
 pub struct Camera {
-    pub position: Point3,
-    pub front: Vector3,
-    pub up: Vector3,
-    pub right: Vector3,
-    pub view_matrix: Matrix4,
-    pub projection_matrix: Matrix4,
-    pub movement_speed: f32,
-    pub mouse_sensitivity: f32,
-    pub zoom: f32,
+    position: Point3,
+    front: Vector3,
+    up: Vector3,
+    right: Vector3,
+    view_matrix: Matrix4,
+    projection_matrix: Matrix4,
+    movement_speed: f32,
+    mouse_sensitivity: f32,
+    zoom: f32,
 }
 
 impl Default for Camera {
@@ -49,7 +45,12 @@ impl Default for Camera {
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),
             view_matrix: Matrix4::from_axis_angle(Vector3::unit_z(), Deg(180.0)),
-            projection_matrix: perspective(Deg(45.0), 1.0, 0.1, 100.0),
+            projection_matrix: perspective(
+                Deg(ZOOM),
+                SCR_WIDTH as f32 / SCR_HEIGHT as f32,
+                0.1,
+                2000.0,
+            ),
             movement_speed: SPEED,
             mouse_sensitivity: SENSITIVTY,
             zoom: ZOOM,
@@ -57,19 +58,25 @@ impl Default for Camera {
     }
 }
 
+gen_getters! {
+    Camera,
+    movement_speed -> f32,
+    view_matrix -> Matrix4,
+}
+gen_ref_getters! {
+    Camera,
+    projection_matrix -> &Matrix4,
+}
+
 impl Steerable for Camera {
     fn pitch(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
         self.front = (rotation * self.front).normalize();
-        // if self.right.cross(self.front).dot(self.up) < 0.0 {
-        //     self.up *= -1.0;
-        // }
         // problematic
-        // we need to compensate for 
+        // we need to compensate for the unwanted roll
         self.up = (rotation * self.up).normalize();
         self.update_view_matrix();
     }
-
     fn yaw(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
         self.front = (rotation * self.front).normalize();
@@ -83,64 +90,28 @@ impl Steerable for Camera {
         self.up = (rotation * self.up).normalize();
         self.update_view_matrix();
     }
-    fn throttle_up(&mut self, amount: f32) {
-        todo!()
-    }
-    fn throttle_down(&mut self, amount: f32) {
-        todo!()
+    fn forward(&mut self, throttle: f32) {
+        self.position += self.front * throttle;
+        self.update_view_matrix();
     }
 }
 
 impl Camera {
-    pub fn view_matrix(&self) -> Matrix4 {
-        self.view_matrix
-    }
-
-    fn update_view_matrix(&mut self) {
+    pub fn update_view_matrix(&mut self) {
         self.view_matrix = Matrix4::look_at(self.position, self.position + self.front, self.up);
         //self.projection_matrix = self.projection_matrix * self.view_matrix;
     }
 
-    /// Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
-    pub fn process_keyboard_input(&mut self, direction: Movement, deltaTime: f32) {
-        let velocity = self.movement_speed * deltaTime;
-        if direction == Forward {
-            self.position += self.front * velocity;
-        }
-        if direction == Backward {
-            self.position += -(self.front * velocity);
-        }
-        if direction == Left {
-            self.position += -(self.right * velocity);
-        }
-        if direction == Right {
-            self.position += self.right * velocity;
-        }
-        if direction == RollRight {
-            self.roll(0.1);
-        }
-        if direction == RollLeft {
-            self.roll(-0.1);
-        }
-        self.debug_print();
-        self.update_view_matrix();
-    }
-
-    pub fn debug_print(&self) {
-        dbg!(self.up);
-        dbg!(self.front);
-        dbg!(self.right);
-        println!("----------------")
-    }
+    pub fn debug_print(&self) {}
 
     pub fn process_mouse_movement(&mut self, mut xoffset: f32, mut yoffset: f32) {
         xoffset *= self.mouse_sensitivity;
         yoffset *= self.mouse_sensitivity;
         self.yaw(-xoffset);
         self.pitch(yoffset);
-        
+
         // compensate for unwanted roll here
-        
+
         self.update_view_matrix();
         self.debug_print();
     }

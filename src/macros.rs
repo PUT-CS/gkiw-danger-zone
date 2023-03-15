@@ -29,3 +29,23 @@ macro_rules! gen_ref_getters {
         }
     };
 }
+/// Generate getter methods to fields of a struct
+macro_rules! gen_getters {
+    {$t:ty, $($field:ident -> $type:ty,)+} => {
+        impl $t {
+            $(
+                pub fn $field(&self) -> $type {
+                    self.$field
+                }
+            )+
+        }
+    };
+}
+
+macro_rules! key_pressed {
+    ($window:expr, $key:expr, $action:expr) => {
+        if $window.get_key($key) == Action::Press {
+            $action
+        }
+    };
+}

@@ -52,7 +52,7 @@ impl Default for Texture {
     }
 }
 
-#[derive(Default)]
+#[derive(Default,Clone)]
 pub struct Model {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,

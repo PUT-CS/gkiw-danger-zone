@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
 use crate::cg::model::Model;
 pub use paste::paste;
@@ -18,6 +16,7 @@ gen_ref_getters! {
     model -> &Model,
     spec -> &AircraftSpec,
     kind -> &AircraftKind,
+    controls -> &Controls,
 }
 
 #[derive(Hash, PartialEq, Eq)]
@@ -45,9 +44,13 @@ impl Aircraft {
             controls: Controls::default(),
         }
     }
+    pub fn controls_mut(&mut self) -> &mut Controls {
+        &mut self.controls
+    }
 }
 
 impl Steerable for Aircraft {
+    // modify Controls property according to AircraftSpec
     fn pitch(&mut self, amount: f32) {
         todo!()
     }
@@ -57,10 +60,7 @@ impl Steerable for Aircraft {
     fn yaw(&mut self, amount: f32) {
         todo!()
     }
-    fn throttle_up(&mut self, amount: f32) {
-        todo!()
-    }
-    fn throttle_down(&mut self, amount: f32) {
+    fn forward(&mut self, amount: f32) {
         todo!()
     }
 }

@@ -17,7 +17,7 @@ impl Terrain {
             type_
         }
     }
-    fn generate(&mut self) {
+    pub fn generate(&mut self) {
         // apply a height map / random noise map to generate a terrain
         // the model attribute has a vertices attribute.
         // each Vertex there has a position vector.
