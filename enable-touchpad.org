@@ -1,0 +1,16 @@
+* Enable touchpad controls when using the keyboard
+#+BEGIN_SRC shell
+  xinput
+#+END_SRC
+Find the ID of your touchpad
+#+BEGIN_SRC shell
+  xinput list-props YOUR_ID
+#+END_SRC
+List its properties
+#+BEGIN_SRC shell
+  xinput list-props YOUR_ID
+#+END_SRC
+ Find one called "Disable While Typing Enabled" and note the number in parenthesis, like (300)
+#+BEGIN_SRC shell
+  xinput set-prop YOUR_ID NUMBER 0
+#+END_SRC 

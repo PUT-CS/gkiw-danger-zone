@@ -1,6 +1,7 @@
 use cgmath::{Matrix, Matrix4};
 use gl;
 use gl::types::*;
+use log::info;
 use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::io::Read;
@@ -58,6 +59,7 @@ impl Shader {
             gl::DeleteShader(fragment);
             shader.id = id;
         }
+        info!("Created shader: {vertex_path}, {fragment_path}");
         shader
     }
 

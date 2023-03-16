@@ -2,12 +2,7 @@ appenders:
   my_stdout:
     kind: console
     encoder:
-      pattern: "{h({d(%Y-%m-%d %H:%M:%S)(utc)} - {l}: {m}{n})}"
-  my_file_logger:
-    kind: file
-    path: "log/toru.log"
-    encoder:
-      pattern: "{d(%Y-%m-%d %H:%M:%S)(utc)} - {h({l})}: {m}{n}"
+      pattern: "{h({d(%H:%M:%S)} | {({l}):5.5} | {f}:{L} — {m}{n})}"
 root:
   level: info
   appenders:
@@ -15,9 +10,5 @@ root:
     - my_file_logger
 
 loggers:
-  serenity:
-    level: off
-  tokio:
-    level: off
   tracing:
     level: off

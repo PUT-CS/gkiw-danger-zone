@@ -5,6 +5,7 @@ use gl;
 use image;
 use image::DynamicImage::*;
 use image::GenericImage;
+use log::info;
 use crate::cg::shader::Shader;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
@@ -65,7 +66,8 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new<T>(path: T) -> Model where T: ToString + AsRef<OsStr> {
+    pub fn new<T>(path: T) -> Model where T: ToString + AsRef<OsStr> + std::fmt::Display {
+        info!("Creating new Model: {path}");
         let mut model = Model {
             vertices: vec![],
             indices: vec![],
@@ -190,7 +192,6 @@ impl Model {
             }
         }
 
-        println!("Looking for {}, {}", path, self.directory);
         let texture = Texture {
             id: unsafe { texture_from_file(path, &self.directory) },
             type_: type_name.into(),

@@ -41,6 +41,18 @@ macro_rules! gen_getters {
         }
     };
 }
+/// Generate getter methods to fields of a struct
+macro_rules! gen_mut_getters {
+    {$t:ty, $($field:ident -> $type:ty,)+} => {
+        impl $t {
+            $(
+                pub fn $field(&self) -> $type {
+                    &mut self.$field
+                }
+            )+
+        }
+    };
+}
 
 macro_rules! key_pressed {
     ($window:expr, $key:expr, $action:expr) => {
