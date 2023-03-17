@@ -1,14 +1,9 @@
-use cg::{camera::Camera, model::Model, shader::Shader, terrain::Terrain, terrain::TerrainType};
-use cgmath::{vec3, Deg, Matrix4, Vector3};
+use cg::shader::Shader;
 use game::flight::aircraft::AircraftKind::*;
 use game::player::Player;
-use glfw::{ffi::glfwSwapInterval, Context, Glfw, Window, WindowEvent};
-use log::info;
-use std::ffi::CStr;
-use std::sync::mpsc::Receiver;
+use glfw::{ffi::glfwSwapInterval, Context};
 extern crate glfw;
-use self::glfw::{Action, Key};
-use crate::{cg::camera::Movement, game::game::Game};
+use crate::game::game::Game;
 
 const SCR_WIDTH: u32 = 1000;
 const SCR_HEIGHT: u32 = 1000;
@@ -21,8 +16,8 @@ mod cg {
     pub mod terrain;
 }
 mod game {
-    pub mod game;
     pub mod enemy;
+    pub mod game;
     pub mod missile;
     pub mod flight {
         pub mod aircraft;
@@ -52,18 +47,13 @@ fn main() {
     }
 
     let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
-    
+
     while !window.should_close() {
         let current_frame = glfw.get_time() as f32;
         delta_time = current_frame - last_frame;
         last_frame = current_frame;
-        
-        game.process_events(
-            &events,
-            &mut first_mouse,
-            &mut last_x,
-            &mut last_y,
-        );
+
+        game.process_events(&events, &mut first_mouse, &mut last_x, &mut last_y);
         game.process_key(&mut window, delta_time);
 
         unsafe {
@@ -75,4 +65,3 @@ fn main() {
         glfw.poll_events();
     }
 }
-

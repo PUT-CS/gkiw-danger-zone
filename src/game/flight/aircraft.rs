@@ -1,5 +1,6 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
-use crate::cg::model::Model;
+use crate::cg::{camera::ControlSurfaces, model::Model};
+use lazy_static::lazy_static;
 use log::info;
 pub use paste::paste;
 use std::collections::HashMap;
@@ -26,7 +27,6 @@ pub enum AircraftKind {
     F16,
 }
 
-use lazy_static::lazy_static;
 lazy_static! {
     static ref BLUEPRINTS: HashMap<AircraftKind, AircraftSpec> =
         HashMap::from([(Mig21, AircraftSpec::new([0.001, 0.001, 0.001]))]);
@@ -50,6 +50,18 @@ impl Aircraft {
     pub fn controls_mut(&mut self) -> &mut Controls {
         &mut self.controls
     }
+
+    pub fn apply_decay(&mut self) {
+        if self.controls().decay()[ControlSurfaces::Pitch as usize] {
+            self.controls_mut().apply_pitch_decay()
+        }
+        if self.controls().decay()[ControlSurfaces::Yaw as usize] {
+            self.controls_mut().apply_yaw_decay()
+        }
+        if self.controls().decay()[ControlSurfaces::Roll as usize] {
+            self.controls_mut().apply_roll_decay()
+        }
+    }
 }
 
 impl Steerable for Aircraft {
@@ -65,10 +77,8 @@ impl Steerable for Aircraft {
         .clamp(-1., 1.);
     }
     fn yaw(&mut self, amount: f32) {
-        *self.controls_mut().yaw_bias_mut() = (self.controls().yaw_bias()
-            + self.spec().yaw_rate() * amount.signum())
-        .clamp(-1., 1.);
-
+        *self.controls_mut().yaw_bias_mut() =
+            (self.controls().yaw_bias() + self.spec().yaw_rate() * amount.signum()).clamp(-1., 1.);
     }
     fn forward(&mut self, amount: f32) {
         *self.controls_mut().throttle_mut() += 0.1

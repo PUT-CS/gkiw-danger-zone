@@ -7,8 +7,6 @@ use cgmath::prelude::*;
 use cgmath::vec3;
 use cgmath::Deg;
 use cgmath::Quaternion;
-use log::info;
-use log::warn;
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
 type Matrix4 = cgmath::Matrix4<f32>;
@@ -21,6 +19,14 @@ pub enum Movement {
     YawRight,
     RollRight,
     RollLeft,
+    ThrottleUp,
+    ThrottleDown,
+}
+
+pub enum ControlSurfaces {
+    Pitch = 0,
+    Yaw = 1,
+    Roll = 2,
 }
 
 const SPEED: f32 = 25.;

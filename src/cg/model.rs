@@ -1,3 +1,4 @@
+use crate::cg::shader::Shader;
 use cgmath::prelude::*;
 use cgmath::{vec2, vec3};
 use cgmath::{Vector2, Vector3};
@@ -6,7 +7,6 @@ use image;
 use image::DynamicImage::*;
 use image::GenericImage;
 use log::info;
-use crate::cg::shader::Shader;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
 use std::os::raw::c_void;
@@ -53,7 +53,7 @@ impl Default for Texture {
     }
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 pub struct Model {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
@@ -66,7 +66,10 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new<T>(path: T) -> Model where T: ToString + AsRef<OsStr> + std::fmt::Display {
+    pub fn new<T>(path: T) -> Model
+    where
+        T: ToString + AsRef<OsStr> + std::fmt::Display,
+    {
         info!("Creating new Model: {path}");
         let mut model = Model {
             vertices: vec![],
@@ -136,10 +139,18 @@ impl Model {
     }
 
     // load a model from file and stores the resulting meshes in the meshes vector.
-    fn load_model<T>(&mut self, path: T) where T: ToString + AsRef<OsStr> {
+    fn load_model<T>(&mut self, path: T)
+    where
+        T: ToString + AsRef<OsStr>,
+    {
         let path = Path::new(&path);
 
-        self.directory = path.parent().unwrap_or_else(|| Path::new("")).to_str().unwrap().into();
+        self.directory = path
+            .parent()
+            .unwrap_or_else(|| Path::new(""))
+            .to_str()
+            .unwrap()
+            .into();
         let obj = tobj::load_obj(path);
 
         let (models, materials) = obj.unwrap();
@@ -166,15 +177,18 @@ impl Model {
                 let material = &materials[material_id];
 
                 if !material.diffuse_texture.is_empty() {
-                    let texture = self.load_material_texture(&material.diffuse_texture, "texture_diffuse");
+                    let texture =
+                        self.load_material_texture(&material.diffuse_texture, "texture_diffuse");
                     textures.push(texture);
                 }
                 if !material.specular_texture.is_empty() {
-                    let texture = self.load_material_texture(&material.specular_texture, "texture_specular");
+                    let texture =
+                        self.load_material_texture(&material.specular_texture, "texture_specular");
                     textures.push(texture);
                 }
                 if !material.normal_texture.is_empty() {
-                    let texture = self.load_material_texture(&material.normal_texture, "texture_normal");
+                    let texture =
+                        self.load_material_texture(&material.normal_texture, "texture_normal");
                     textures.push(texture);
                 }
             }

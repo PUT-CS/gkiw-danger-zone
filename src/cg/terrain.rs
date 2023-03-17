@@ -22,7 +22,12 @@ pub struct Terrain {
 
 impl Default for Terrain {
     fn default() -> Self {
-        Terrain::new(TERRAINS.get(&TerrainType::Desert).expect("No path for that terrain"), TerrainType::Desert)
+        Terrain::new(
+            TERRAINS
+                .get(&TerrainType::Desert)
+                .expect("No path for that terrain"),
+            TerrainType::Desert,
+        )
     }
 }
 

@@ -1,8 +1,6 @@
-use log::{info, warn};
-
 use super::flight::aircraft::{Aircraft, AircraftKind};
 use crate::cg::{
-    camera::{Camera, Movement, Movement::*},
+    camera::{Camera, ControlSurfaces, Movement, Movement::*},
     shader::Shader,
 };
 use crate::game::flight::steerable::Steerable;
@@ -59,26 +57,52 @@ impl Player {
         if direction == PitchUp {
             self.aircraft_mut().pitch(velocity);
             self.camera_mut().pitch(velocity);
+            self.aircraft_mut()
+                .controls_mut()
+                .set_decay(ControlSurfaces::Pitch, false);
         }
         if direction == PitchDown {
             self.aircraft_mut().pitch(-velocity);
             self.camera_mut().pitch(-velocity);
+            self.aircraft_mut()
+                .controls_mut()
+                .set_decay(ControlSurfaces::Pitch, false);
         }
         if direction == YawLeft {
             self.aircraft_mut().yaw(velocity);
-            self.camera_mut().yaw(velocity)
+            self.camera_mut().yaw(velocity);
+            self.aircraft_mut()
+                .controls_mut()
+                .set_decay(ControlSurfaces::Yaw, false);
         }
         if direction == YawRight {
             self.aircraft_mut().yaw(-velocity);
-            self.camera_mut().yaw(-velocity)
+            self.camera_mut().yaw(-velocity);
+            self.aircraft_mut()
+                .controls_mut()
+                .set_decay(ControlSurfaces::Yaw, false);
         }
         if direction == RollRight {
             self.aircraft_mut().roll(0.1);
             self.camera.roll(0.1);
+            self.aircraft_mut()
+                .controls_mut()
+                .set_decay(ControlSurfaces::Roll, false);
         }
         if direction == RollLeft {
             self.aircraft_mut().roll(-0.1);
             self.camera.roll(-0.1);
+            self.aircraft_mut()
+                .controls_mut()
+                .set_decay(ControlSurfaces::Roll, false);
+        }
+        if direction == ThrottleUp {
+            *self.aircraft.controls_mut().throttle_mut() =
+                (self.aircraft.controls().throttle() + 0.0003).clamp(0.1, 1.)
+        }
+        if direction == ThrottleDown {
+            *self.aircraft.controls_mut().throttle_mut() =
+                (self.aircraft.controls().throttle() - 0.0003).clamp(0.1, 1.)
         }
         dbg!(&self.aircraft().controls());
         self.camera.update_view_matrix();

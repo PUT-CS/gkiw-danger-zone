@@ -1,3 +1,4 @@
+use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use log::info;
 use std::sync::mpsc::Receiver;
@@ -36,7 +37,9 @@ impl Game {
     }
 
     pub fn update(&mut self) {
-        self.player.apply_controls()
+        dbg!(&self.player.aircraft().controls());
+        self.player.apply_controls();
+        self.player.aircraft_mut().apply_decay();
     }
 
     pub unsafe fn draw(&mut self, shader: &Shader) {
@@ -108,6 +111,10 @@ impl Game {
     }
 
     pub fn process_key(&mut self, window: &mut glfw::Window, delta_time: f32) {
+        self.player_mut()
+            .aircraft_mut()
+            .controls_mut()
+            .set_all_decays(true);
         key_pressed!(window, Key::Escape, window.set_should_close(true));
         key_pressed!(
             window,
@@ -138,6 +145,16 @@ impl Game {
             window,
             Key::Q,
             self.player.process_key(Movement::YawLeft, delta_time)
+        );
+        key_pressed!(
+            window,
+            Key::LeftShift,
+            self.player.process_key(Movement::ThrottleUp, delta_time)
+        );
+        key_pressed!(
+            window,
+            Key::LeftControl,
+            self.player.process_key(Movement::ThrottleDown, delta_time)
         );
     }
 
@@ -177,6 +194,12 @@ impl Game {
         window.set_cursor_mode(glfw::CursorMode::Disabled);
 
         gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
+
+        unsafe {
+            glfwSwapInterval(0);
+            gl::ClearColor(0.2, 0.2, 0.2, 1.0);
+            gl::Enable(gl::DEPTH_TEST);
+        }
 
         (glfw, window, events)
     }
