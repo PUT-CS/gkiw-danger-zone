@@ -58,12 +58,12 @@ impl Game {
         self.player.draw(&shader);
 
         let mut model_matrix = Matrix4::<f32>::from_translation(vec3(0.0, -10.0, 0.0));
-        model_matrix = model_matrix * Matrix4::from_scale(1000.0);
+        model_matrix = model_matrix * Matrix4::from_scale(10000.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.terrain.draw(&shader);
 
         let mut model_matrix = Matrix4::<f32>::from_translation(vec3(0.0, -10.0, 0.0));
-        model_matrix = model_matrix * Matrix4::from_scale(1000.0);
+        model_matrix = model_matrix * Matrix4::from_scale(10000.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
     }

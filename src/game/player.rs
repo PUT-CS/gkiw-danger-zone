@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::flight::aircraft::{Aircraft, AircraftKind};
 use crate::cg::{
     camera::{Camera, ControlSurfaces, Movement, Movement::*},
@@ -46,52 +48,54 @@ impl Player {
         &mut self.camera
     }
 
-    /// Modify the player's position based on the Controls
+    /// Modify the player's position and camera based on the Controls
     pub fn apply_controls(&mut self) {
+        let steering_constant = 0.1;
         let throttle = self.aircraft.controls().throttle();
-        self.camera_mut().forward(throttle)
+        let controls = self.aircraft.controls().clone();
+        self.camera_mut().forward(throttle);
+        self.camera_mut()
+            .pitch(controls.pitch_bias() * steering_constant / 2.);
+        self.camera_mut()
+            .yaw(controls.yaw_bias() * steering_constant / 7.);
+        self.camera_mut()
+            .roll(controls.roll_bias() * steering_constant * 1.5);
     }
 
     pub fn process_key(&mut self, direction: Movement, delta_time: f32) {
         let velocity = self.camera.movement_speed() * delta_time;
         if direction == PitchUp {
             self.aircraft_mut().pitch(velocity);
-            self.camera_mut().pitch(velocity);
             self.aircraft_mut()
                 .controls_mut()
                 .set_decay(ControlSurfaces::Pitch, false);
         }
         if direction == PitchDown {
             self.aircraft_mut().pitch(-velocity);
-            self.camera_mut().pitch(-velocity);
             self.aircraft_mut()
                 .controls_mut()
                 .set_decay(ControlSurfaces::Pitch, false);
         }
         if direction == YawLeft {
             self.aircraft_mut().yaw(velocity);
-            self.camera_mut().yaw(velocity);
             self.aircraft_mut()
                 .controls_mut()
                 .set_decay(ControlSurfaces::Yaw, false);
         }
         if direction == YawRight {
             self.aircraft_mut().yaw(-velocity);
-            self.camera_mut().yaw(-velocity);
             self.aircraft_mut()
                 .controls_mut()
                 .set_decay(ControlSurfaces::Yaw, false);
         }
         if direction == RollRight {
             self.aircraft_mut().roll(0.1);
-            self.camera.roll(0.1);
             self.aircraft_mut()
                 .controls_mut()
                 .set_decay(ControlSurfaces::Roll, false);
         }
         if direction == RollLeft {
             self.aircraft_mut().roll(-0.1);
-            self.camera.roll(-0.1);
             self.aircraft_mut()
                 .controls_mut()
                 .set_decay(ControlSurfaces::Roll, false);

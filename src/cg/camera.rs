@@ -57,7 +57,7 @@ impl Default for Camera {
                 Deg(ZOOM),
                 SCR_WIDTH as f32 / SCR_HEIGHT as f32,
                 0.1,
-                2000.0,
+                20000.0,
             ),
             movement_speed: SPEED,
             mouse_sensitivity: SENSITIVTY,
