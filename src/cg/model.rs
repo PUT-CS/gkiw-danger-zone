@@ -1,7 +1,10 @@
 use crate::cg::shader::Shader;
+use crate::game::flight::steerable::Steerable;
 use cgmath::prelude::*;
+use cgmath::Deg;
+use cgmath::Quaternion;
+use cgmath::Vector2;
 use cgmath::{vec2, vec3};
-use cgmath::{Vector2, Vector3};
 use gl;
 use image;
 use image::DynamicImage::*;
@@ -17,11 +20,11 @@ use tobj;
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct Vertex {
-    pub position: Vector3<f32>,
-    pub normal: Vector3<f32>,
+    pub position: Vector3,
+    pub normal: Vector3,
     pub tex_coords: Vector2<f32>,
-    pub tangent: Vector3<f32>,
-    pub bitangent: Vector3<f32>,
+    pub tangent: Vector3,
+    pub bitangent: Vector3,
 }
 
 impl Default for Vertex {
@@ -36,7 +39,7 @@ impl Default for Vertex {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Texture {
     pub id: u32,
     pub type_: String,
@@ -53,7 +56,11 @@ impl Default for Texture {
     }
 }
 
-#[derive(Default, Clone)]
+type Point3 = cgmath::Point3<f32>;
+type Vector3 = cgmath::Vector3<f32>;
+type Matrix4 = cgmath::Matrix4<f32>;
+
+#[derive(Clone, Debug)]
 pub struct Model {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
@@ -63,6 +70,60 @@ pub struct Model {
     ebo: u32,
     pub textures_loaded: Vec<Texture>,
     directory: String,
+    model_matrix: Matrix4,
+    pub position: Point3,
+    pub front: Vector3,
+    pub up: Vector3,
+    pub right: Vector3,
+}
+
+impl Default for Model {
+    fn default() -> Self {
+        Model {
+            vertices: vec![],
+            indices: vec![],
+            textures: vec![],
+            vao: 999,
+            vbo: 999,
+            ebo: 999,
+            textures_loaded: vec![],
+            model_matrix: Matrix4::from_value(1.0),
+            directory: "".to_string(),
+            position: Point3::new(0., 0., 0.),
+            front: Vector3::unit_z() * -1.,
+            up: Vector3::unit_y(),
+            right: Vector3::unit_x(),
+        }
+    }
+}
+
+
+impl Steerable for Model {
+    fn pitch(&mut self, amount: f32) {
+        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(self.right, Deg(amount));
+        let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
+        self.front = (rotation * self.front).normalize();
+        // problematic
+        // we need to compensate for the unwanted roll
+        self.up = (rotation * self.up).normalize();
+    }
+    fn yaw(&mut self, amount: f32) {
+        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(self.up, Deg(amount));
+        let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
+        self.front = (rotation * self.front).normalize();
+        self.right = (rotation * self.right).normalize();
+    }
+
+    fn roll(&mut self, amount: f32) {
+        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(self.front, Deg(amount));
+        let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
+        self.right = (rotation * self.right).normalize();
+        self.up = (rotation * self.up).normalize();
+    }
+    fn forward(&mut self, throttle: f32) {
+        self.position += self.front * throttle;
+        self.model_matrix = self.model_matrix * Matrix4::from_translation(self.front * throttle);
+    }
 }
 
 impl Model {
@@ -71,19 +132,35 @@ impl Model {
         T: ToString + AsRef<OsStr> + std::fmt::Display,
     {
         info!("Creating new Model: {path}");
-        let mut model = Model {
-            vertices: vec![],
-            indices: vec![],
-            textures: vec![],
-            vao: 0,
-            vbo: 0,
-            ebo: 0,
-            textures_loaded: vec![],
-            directory: "".to_string(),
-        };
+        // let mut model = Model {
+        //     vertices: vec![],
+        //     indices: vec![],
+        //     textures: vec![],
+        //     vao: 0,
+        //     vbo: 0,
+        //     ebo: 0,
+        //     textures_loaded: vec![],
+        //     directory: "".to_string(),
+        // };
+        let mut model = Model::default();
         model.load_model(path);
         unsafe { model.setup_mesh() }
         model
+    }
+
+    pub fn rotate(&mut self, q: Matrix4) {
+        self.model_matrix = self.model_matrix * q
+    }
+
+    // pub fn model_matrix(&self, translation: Vector3, scale: f32, rotation: Matrix4) -> Matrix4 {
+    //     let mut model_matrix = Matrix4::from_value(1.0);
+    //     model_matrix = model_matrix * Matrix4::from_translation(translation);
+    //     model_matrix = model_matrix * Matrix4::from_scale(scale);
+    //     model_matrix = model_matrix * rotation;
+    //     model_matrix
+    // }
+    pub fn model_matrix(&self) -> Matrix4 {
+        self.model_matrix * Matrix4::from_translation(vec3(0.0, -0.3, 0.0)) * Matrix4::from_scale(0.5) * Matrix4::from_angle_y(Deg(-90.))
     }
 
     pub unsafe fn draw(&self, shader: &Shader) {

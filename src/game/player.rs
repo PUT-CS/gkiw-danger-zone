@@ -1,15 +1,18 @@
-use std::sync::Arc;
+use std::{sync::Arc, fmt::Debug};
 
-use super::flight::aircraft::{Aircraft, AircraftKind};
+use log::warn;
+
+use super::flight::{aircraft::{Aircraft, AircraftKind}, control_surfaces::Controls};
 use crate::cg::{
     camera::{Camera, ControlSurfaces, Movement, Movement::*},
-    shader::Shader,
+    shader::Shader, model::Model,
 };
 use crate::game::flight::steerable::Steerable;
 
 pub struct Player {
     aircraft: Aircraft,
     camera: Camera,
+    pub cockpit: Model,
     kills: u32,
 }
 
@@ -26,6 +29,7 @@ impl Default for Player {
             aircraft: Aircraft::new(AircraftKind::Mig21),
             camera: Camera::default(),
             kills: 0,
+            cockpit: Model::new("resources/objects/cockpit/cockpit.obj"),
         }
     }
 }
@@ -36,6 +40,7 @@ impl Player {
             aircraft: Aircraft::new(aircraft_kind),
             camera: Camera::default(),
             kills: 0,
+            cockpit: Model::new("resources/objects/cockpit/cockpit.obj")
         }
     }
     pub unsafe fn draw(&self, shader: &Shader) {
@@ -50,16 +55,25 @@ impl Player {
 
     /// Modify the player's position and camera based on the Controls
     pub fn apply_controls(&mut self) {
-        let steering_constant = 0.1;
-        let throttle = self.aircraft.controls().throttle();
+        let steering_constant = 0.2;
         let controls = self.aircraft.controls().clone();
-        self.camera_mut().forward(throttle);
+        self.camera_mut().forward(controls.throttle());
         self.camera_mut()
             .pitch(controls.pitch_bias() * steering_constant / 2.);
         self.camera_mut()
             .yaw(controls.yaw_bias() * steering_constant / 7.);
         self.camera_mut()
             .roll(controls.roll_bias() * steering_constant * 1.5);
+    }
+
+    fn move_steerable(object: &mut (impl Steerable + Debug), c: &Controls, x: f32) {
+        //object.forward(c.throttle());
+        object
+            .pitch(c.pitch_bias() * x / 2.);
+        object
+            .yaw(c.yaw_bias() * x / 7.);
+        object
+            .roll(c.roll_bias() * x * 1.5);
     }
 
     pub fn process_key(&mut self, direction: Movement, delta_time: f32) {
@@ -108,7 +122,7 @@ impl Player {
             *self.aircraft.controls_mut().throttle_mut() =
                 (self.aircraft.controls().throttle() - 0.0003).clamp(0.1, 1.)
         }
-        dbg!(&self.aircraft().controls());
+        //dbg!(&self.aircraft().controls());
         self.camera.update_view_matrix();
     }
 }

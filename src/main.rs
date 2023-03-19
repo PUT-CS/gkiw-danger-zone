@@ -1,4 +1,4 @@
-use cg::shader::Shader;
+use cg::{shader::Shader, model::Model};
 use game::flight::aircraft::AircraftKind::*;
 use game::player::Player;
 use glfw::{ffi::glfwSwapInterval, Context};
@@ -14,6 +14,7 @@ mod cg {
     pub mod model;
     pub mod shader;
     pub mod terrain;
+    pub mod transformation;
 }
 mod game {
     pub mod enemy;
@@ -29,7 +30,6 @@ mod game {
 }
 
 fn main() {
-    let (mut glfw, mut window, events) = Game::init();
     let mut first_mouse = true;
     let mut last_x: f32 = SCR_WIDTH as f32 / 2.;
     let mut last_y: f32 = SCR_HEIGHT as f32 / 2.;
@@ -48,20 +48,20 @@ fn main() {
 
     let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
 
-    while !window.should_close() {
-        let current_frame = glfw.get_time() as f32;
+    while !game.window.should_close() {
+        let current_frame = game.glfw.get_time() as f32;
         delta_time = current_frame - last_frame;
         last_frame = current_frame;
 
-        game.process_events(&events, &mut first_mouse, &mut last_x, &mut last_y);
-        game.process_key(&mut window, delta_time);
+        game.process_events(&mut first_mouse, &mut last_x, &mut last_y);
+        game.process_key(delta_time);
 
         unsafe {
             game.update();
             game.draw(&shader);
         }
 
-        window.swap_buffers();
-        glfw.poll_events();
+        game.window.swap_buffers();
+        game.glfw.poll_events();
     }
 }

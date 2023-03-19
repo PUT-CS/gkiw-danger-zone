@@ -1,6 +1,6 @@
 use crate::cg::camera::ControlSurfaces;
 
-const DECAY: f32 = 0.001;
+const DECAY: f32 = 0.004;
 
 #[derive(Clone, Debug)]
 pub struct Controls {

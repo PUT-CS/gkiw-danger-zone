@@ -33,11 +33,12 @@ const SPEED: f32 = 25.;
 const SENSITIVTY: f32 = 0.1;
 const ZOOM: f32 = 45.0;
 
+#[derive(Debug)]
 pub struct Camera {
-    position: Point3,
-    front: Vector3,
-    up: Vector3,
-    right: Vector3,
+    pub position: Point3,
+    pub front: Vector3,
+    pub up: Vector3,
+    pub right: Vector3,
     view_matrix: Matrix4,
     projection_matrix: Matrix4,
     movement_speed: f32,
@@ -57,7 +58,7 @@ impl Default for Camera {
                 Deg(ZOOM),
                 SCR_WIDTH as f32 / SCR_HEIGHT as f32,
                 0.1,
-                20000.0,
+                30000.0,
             ),
             movement_speed: SPEED,
             mouse_sensitivity: SENSITIVTY,
@@ -74,6 +75,7 @@ gen_getters! {
 gen_ref_getters! {
     Camera,
     projection_matrix -> &Matrix4,
+    position -> &Point3,
 }
 
 impl Steerable for Camera {

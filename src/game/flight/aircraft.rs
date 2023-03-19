@@ -29,7 +29,7 @@ pub enum AircraftKind {
 
 lazy_static! {
     static ref BLUEPRINTS: HashMap<AircraftKind, AircraftSpec> =
-        HashMap::from([(Mig21, AircraftSpec::new([0.001, 0.001, 0.001]))]);
+        HashMap::from([(Mig21, AircraftSpec::new([0.001, 0.001, 0.002]))]);
     static ref MODEL_PATHS: HashMap<AircraftKind, &'static str> =
         HashMap::from([(Mig21, "resources/objects/mig21/mig21.obj")]);
 }
@@ -49,6 +49,9 @@ impl Aircraft {
     }
     pub fn controls_mut(&mut self) -> &mut Controls {
         &mut self.controls
+    }
+    pub fn model_mut(&mut self) -> &mut Model {
+        &mut self.model
     }
 
     pub fn apply_decay(&mut self) {
