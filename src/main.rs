@@ -1,7 +1,7 @@
-use cg::{shader::Shader, model::Model};
+use cg::shader::Shader;
 use game::flight::aircraft::AircraftKind::*;
 use game::player::Player;
-use glfw::{ffi::glfwSwapInterval, Context};
+use glfw::Context;
 extern crate glfw;
 use crate::game::game::Game;
 
@@ -40,11 +40,7 @@ fn main() {
     let mut game = Game::new();
     game.set_player(Player::new(Mig21));
 
-    unsafe {
-        glfwSwapInterval(0);
-        gl::ClearColor(0.2, 0.2, 0.2, 1.0);
-        gl::Enable(gl::DEPTH_TEST);
-    }
+
 
     let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
 

@@ -1,5 +1,6 @@
+use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
-use glfw::{Context, Glfw, Window, WindowEvent, Monitor};
+use glfw::{Context, Glfw, Monitor, Window, WindowEvent};
 use log::info;
 use std::sync::mpsc::Receiver;
 extern crate glfw;
@@ -7,13 +8,10 @@ use self::glfw::{Action, Key};
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
 use crate::cg::{camera::Movement, terrain::Terrain};
-use cgmath::{vec3, Deg, Matrix4, Vector3, SquareMatrix, perspective};
+use cgmath::{perspective, vec3, Deg, Matrix4, SquareMatrix, Vector3};
 use std::ffi::CStr;
 
 use super::{enemy::Enemy, missile::Missile, player::Player};
-
-const SCR_WIDTH: u32 = 1000;
-const SCR_HEIGHT: u32 = 1000;
 
 pub struct Game {
     player: Player,
@@ -23,7 +21,7 @@ pub struct Game {
     skybox: Model,
     pub glfw: Glfw,
     pub window: Window,
-    pub events: Receiver<(f64, WindowEvent)>
+    pub events: Receiver<(f64, WindowEvent)>,
 }
 
 impl Game {
@@ -61,7 +59,7 @@ impl Game {
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
             gl::Enable(gl::DEPTH_TEST);
         }
-        
+
         Game {
             player: Player::default(),
             enemies: vec![],
@@ -70,7 +68,7 @@ impl Game {
             skybox: Model::new("resources/objects/skybox/skybox.obj"),
             glfw,
             window,
-            events
+            events,
         }
     }
 
@@ -86,12 +84,7 @@ impl Game {
 
         shader.set_mat4(
             c_str!("projection"),
-            &perspective(
-                Deg(45.),
-                SCR_WIDTH as f32 / SCR_HEIGHT as f32,
-                0.1,
-                30000.0,
-            ),
+            &perspective(Deg(45.), SCR_WIDTH as f32 / SCR_HEIGHT as f32, 0.1, 30000.0),
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
@@ -118,10 +111,15 @@ impl Game {
         // ), 0.9, Matrix4::from_angle_y(Deg(-90.)));
         let mut model_matrix = self.player.cockpit.model_matrix();
         let time = self.glfw.get_time() as f32 * 2.0;
-        model_matrix = model_matrix * Matrix4::from_translation(vec3(time.sin() * 0.01, time.cos().sin() * 0.01, time.cos()* 0.01));
+        model_matrix = model_matrix
+            * Matrix4::from_translation(vec3(
+                time.sin() * 0.01,
+                time.cos().sin() * 0.01,
+                time.cos() * 0.01,
+            ));
         shader.set_mat4(c_str!("model"), &model_matrix);
         shader.set_mat4(c_str!("view"), &Matrix4::from_value(1.0));
-        self.player.cockpit.draw(&shader);
+        //self.player.cockpit.draw(&shader);
     }
 
     pub fn process_events(

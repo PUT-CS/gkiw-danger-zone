@@ -103,13 +103,13 @@ impl Player {
                 .set_decay(ControlSurfaces::Yaw, false);
         }
         if direction == RollRight {
-            self.aircraft_mut().roll(0.1);
+            self.aircraft_mut().roll(velocity);
             self.aircraft_mut()
                 .controls_mut()
                 .set_decay(ControlSurfaces::Roll, false);
         }
         if direction == RollLeft {
-            self.aircraft_mut().roll(-0.1);
+            self.aircraft_mut().roll(-velocity);
             self.aircraft_mut()
                 .controls_mut()
                 .set_decay(ControlSurfaces::Roll, false);
@@ -122,7 +122,6 @@ impl Player {
             *self.aircraft.controls_mut().throttle_mut() =
                 (self.aircraft.controls().throttle() - 0.0003).clamp(0.1, 1.)
         }
-        //dbg!(&self.aircraft().controls());
         self.camera.update_view_matrix();
     }
 }
