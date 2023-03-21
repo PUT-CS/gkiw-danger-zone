@@ -49,7 +49,7 @@ pub struct Camera {
 impl Default for Camera {
     fn default() -> Camera {
         Camera {
-            position: Point3::new(0.0, 0.0, 0.0),
+            position: Point3::new(0.0, 0.0, -5.0),
             front: vec3(0.0, 0.0, -1.0),
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),

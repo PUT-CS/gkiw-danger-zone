@@ -90,6 +90,7 @@ impl Default for Model {
             model_matrix: Matrix4::from_value(1.0),
             directory: "".to_string(),
             position: Point3::new(0., 0., 0.),
+            //front: Vector3::unit_z() * -1.,
             front: Vector3::unit_z() * -1.,
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),
@@ -97,29 +98,34 @@ impl Default for Model {
     }
 }
 
-
 impl Steerable for Model {
     fn pitch(&mut self, amount: f32) {
-        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(self.right, Deg(amount));
-        let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
-        self.front = (rotation * self.front).normalize();
-        // problematic
-        // we need to compensate for the unwanted roll
-        self.up = (rotation * self.up).normalize();
+
+        // SOMETHING'S NOT RIGHT WITH HOW WE ROTATE HERE.
+        // VECTORS DONT GET UPDATED PROPERLY
+        
+        //let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
+        let rotation = Matrix4::from_axis_angle(self.right, Deg(amount));
+        self.model_matrix = self.model_matrix * Matrix4::from(rotation);
+        //self.up = (rotation * self.up).normalize();
+        //self.front = (rotation * self.front).normalize();
     }
+    
     fn yaw(&mut self, amount: f32) {
-        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(self.up, Deg(amount));
         let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
-        self.front = (rotation * self.front).normalize();
-        self.right = (rotation * self.right).normalize();
+        self.model_matrix = self.model_matrix * Matrix4::from(rotation);
+        // self.front = (rotation * self.front).normalize();
+        // self.right = (rotation * self.right).normalize();
     }
 
     fn roll(&mut self, amount: f32) {
-        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(self.front, Deg(amount));
+        dbg!("Rotation around {}", self.front);
         let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
-        self.right = (rotation * self.right).normalize();
-        self.up = (rotation * self.up).normalize();
+        self.model_matrix = self.model_matrix * Matrix4::from(rotation);
+        // self.up = (rotation * self.up).normalize();
+        // self.right = (rotation * self.right).normalize();
     }
+    
     fn forward(&mut self, throttle: f32) {
         self.position += self.front * throttle;
         self.model_matrix = self.model_matrix * Matrix4::from_translation(self.front * throttle);
@@ -148,19 +154,8 @@ impl Model {
         model
     }
 
-    pub fn rotate(&mut self, q: Matrix4) {
-        self.model_matrix = self.model_matrix * q
-    }
-
-    // pub fn model_matrix(&self, translation: Vector3, scale: f32, rotation: Matrix4) -> Matrix4 {
-    //     let mut model_matrix = Matrix4::from_value(1.0);
-    //     model_matrix = model_matrix * Matrix4::from_translation(translation);
-    //     model_matrix = model_matrix * Matrix4::from_scale(scale);
-    //     model_matrix = model_matrix * rotation;
-    //     model_matrix
-    // }
     pub fn model_matrix(&self) -> Matrix4 {
-        self.model_matrix * Matrix4::from_translation(vec3(0.0, -0.3, 0.0)) * Matrix4::from_scale(0.5) * Matrix4::from_angle_y(Deg(-90.))
+        self.model_matrix
     }
 
     pub unsafe fn draw(&self, shader: &Shader) {

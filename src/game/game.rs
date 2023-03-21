@@ -74,6 +74,11 @@ impl Game {
 
     pub fn update(&mut self) {
         //dbg!(&self.player.aircraft().controls());
+        dbg!(self.player.aircraft().model().position);
+        dbg!(self.player.aircraft().model().front);
+        dbg!(self.player.aircraft().model().right);
+        dbg!(self.player.aircraft().model().up);
+        println!("----------------------");
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
     }
@@ -89,15 +94,18 @@ impl Game {
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
         //let mut model_matrix = Matrix4::<f32>::from_translation(vec3(0.0, 0.0, -1.0));
-        let mut model_matrix = Matrix4::<f32>::from_value(1.0);
-        model_matrix = model_matrix * Matrix4::from_axis_angle(Vector3::unit_x(), Deg(0.));
+        //let mut model_matrix = Matrix4::<f32>::from_value(1.0);
+        let mut model_matrix = self.player.aircraft().model().model_matrix();
+        //model_matrix = model_matrix * Matrix4::from_axis_angle(Vector3::unit_y(), Deg(0.));
+        //model_matrix = model_matrix * Matrix4::from_translation(vec3(0.0, 0., 4.0));
+        //model_matrix = model_matrix * Matrix4::from_translation(vec3(0.0, 0., 0.0));
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.player.draw(&shader);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
-        self.terrain.draw(&shader);
+        //self.terrain.draw(&shader);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
@@ -109,6 +117,7 @@ impl Game {
         //     self.player.camera().position().y - 0.6,
         //     self.player.camera().position().z,
         // ), 0.9, Matrix4::from_angle_y(Deg(-90.)));
+        //  * Matrix4::from_translation(vec3(0.0, -0.3, 0.0)) * Matrix4::from_scale(0.5) * Matrix4::from_angle_y(Deg(-90.))
         let mut model_matrix = self.player.cockpit.model_matrix();
         let time = self.glfw.get_time() as f32 * 2.0;
         model_matrix = model_matrix
