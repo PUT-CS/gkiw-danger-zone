@@ -1,6 +1,7 @@
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Monitor, Window, WindowEvent};
+use itertools::Itertools;
 use log::info;
 use std::sync::mpsc::Receiver;
 extern crate glfw;
@@ -8,7 +9,7 @@ use self::glfw::{Action, Key};
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
 use crate::cg::{camera::Movement, terrain::Terrain};
-use cgmath::{perspective, vec3, Deg, Matrix4, SquareMatrix, Vector3};
+use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, Point3, SquareMatrix, Vector3};
 use std::ffi::CStr;
 
 use super::{enemy::Enemy, missile::Missile, player::Player};
@@ -72,15 +73,38 @@ impl Game {
         }
     }
 
-    pub fn update(&mut self) {
-        //dbg!(&self.player.aircraft().controls());
-        dbg!(self.player.aircraft().model().position);
-        dbg!(self.player.aircraft().model().front);
-        dbg!(self.player.aircraft().model().right);
-        dbg!(self.player.aircraft().model().up);
-        println!("----------------------");
-        self.player.apply_controls();
+    /// Compute new positions of all game objects based on input and state of the game
+    pub fn update(&mut self, delta_time: f32) {
+        self.player.apply_controls(delta_time * 200.);
         self.player.aircraft_mut().apply_decay();
+        if self.targeted_enemies().is_some() {
+            println!("LOCK");
+        } else {
+            println!("");
+        }
+    }
+
+    /// Check if the player
+    pub fn targeted_enemies(&self) -> Option<Vec<Player>> {
+        let player_front = self.player.camera().front;
+        let player_position = self.player.camera().position;
+
+        // temporary. self.enemies here later
+        let enemies = vec![self.player.clone()];
+
+        let targeted: Vec<Player> = enemies
+            .iter()
+            .filter(|enemy| {
+                let pos = enemy.aircraft().model().position;
+                let direction = (pos - player_position).normalize();
+                let deg = direction.angle(player_front).0.to_degrees();
+
+                deg < 5.
+            })
+            .map(|p| p.to_owned())
+            .collect();
+
+        (!targeted.is_empty()).then(|| targeted)
     }
 
     pub unsafe fn draw(&mut self, shader: &Shader) {
@@ -93,32 +117,29 @@ impl Game {
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
-        //let mut model_matrix = Matrix4::<f32>::from_translation(vec3(0.0, 0.0, -1.0));
-        //let mut model_matrix = Matrix4::<f32>::from_value(1.0);
-        let mut model_matrix = self.player.aircraft().model().model_matrix();
+        let mut model_matrix =
+            self.player.aircraft().model().model_matrix() * Matrix4::from_scale(10.0);
         //model_matrix = model_matrix * Matrix4::from_axis_angle(Vector3::unit_y(), Deg(0.));
         //model_matrix = model_matrix * Matrix4::from_translation(vec3(0.0, 0., 4.0));
         //model_matrix = model_matrix * Matrix4::from_translation(vec3(0.0, 0., 0.0));
+        model_matrix = model_matrix * Matrix4::from_angle_y(Deg(180.));
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.player.draw(&shader);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
-        //self.terrain.draw(&shader);
+        self.terrain.draw(&shader);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
 
-        // let mut model_matrix = self.player.cockpit.model_matrix(vec3(
-        //     self.player.camera().position().x + 0.001,
-        //     self.player.camera().position().y - 0.6,
-        //     self.player.camera().position().z,
-        // ), 0.9, Matrix4::from_angle_y(Deg(-90.)));
-        //  * Matrix4::from_translation(vec3(0.0, -0.3, 0.0)) * Matrix4::from_scale(0.5) * Matrix4::from_angle_y(Deg(-90.))
-        let mut model_matrix = self.player.cockpit.model_matrix();
+        let mut model_matrix = self.player.cockpit.model_matrix()
+            * Matrix4::from_translation(vec3(0.0, -0.3, 0.0))
+            * Matrix4::from_scale(0.5)
+            * Matrix4::from_angle_y(Deg(-90.));
         let time = self.glfw.get_time() as f32 * 2.0;
         model_matrix = model_matrix
             * Matrix4::from_translation(vec3(
@@ -128,7 +149,7 @@ impl Game {
             ));
         shader.set_mat4(c_str!("model"), &model_matrix);
         shader.set_mat4(c_str!("view"), &Matrix4::from_value(1.0));
-        //self.player.cockpit.draw(&shader);
+        self.player.cockpit.draw(&shader);
     }
 
     pub fn process_events(
@@ -172,11 +193,14 @@ impl Game {
         }
     }
 
-    pub fn process_key(&mut self, delta_time: f32) {
+    /// First level of controls. Captures pressed keys and calls appropriate functions.
+    /// Additionaly, set all decays on the aircraft as true.
+    pub fn process_key(&mut self) {
         self.player_mut()
             .aircraft_mut()
             .controls_mut()
             .set_all_decays(true);
+        let delta_time = 1.;
         key_pressed!(self.window, Key::Escape, self.window.set_should_close(true));
         key_pressed!(
             self.window,

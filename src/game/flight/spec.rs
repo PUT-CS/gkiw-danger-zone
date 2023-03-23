@@ -1,4 +1,5 @@
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
+/// Define the aircraft's manouverability. Higher values of the attributes mean greater capability.
 pub struct AircraftSpec {
     pitch_rate: f32,
     yaw_rate: f32,

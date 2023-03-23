@@ -48,12 +48,11 @@ fn main() {
         let current_frame = game.glfw.get_time() as f32;
         delta_time = current_frame - last_frame;
         last_frame = current_frame;
-
         game.process_events(&mut first_mouse, &mut last_x, &mut last_y);
-        game.process_key(delta_time);
+        game.process_key();
 
         unsafe {
-            game.update();
+            game.update(delta_time);
             game.draw(&shader);
         }
 

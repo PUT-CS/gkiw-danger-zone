@@ -1,8 +1,11 @@
 use crate::cg::camera::ControlSurfaces;
 
-const DECAY: f32 = 0.004;
+const DECAY: f32 = 0.0004;
+pub const MAX_BIAS: f32 = 0.5;
 
 #[derive(Clone, Debug)]
+/// Struct describing the mechanical state of the control parameters in the aircraft.
+/// values of -1 and 1 indicate maximum flap rotation
 pub struct Controls {
     pitch_bias: f32,
     yaw_bias: f32,
@@ -17,7 +20,7 @@ impl Default for Controls {
             pitch_bias: 0.,
             yaw_bias: 0.,
             roll_bias: 0.,
-            throttle: 0.05,
+            throttle: 0.1,
             decay: [true, true, true],
         }
     }
@@ -42,26 +45,30 @@ impl Controls {
     pub fn set_decay(&mut self, surface: ControlSurfaces, b: bool) {
         self.decay[surface as usize] = b;
     }
+    /// set all decay values to a boolean
     pub fn set_all_decays(&mut self, b: bool) {
         self.decay = [b, b, b]
     }
+    /// Compute a new value of the aircraft's pitch based on decay and set it as the new pitch bias
     pub fn apply_pitch_decay(&mut self) {
         self.pitch_bias = if self.pitch_bias.abs() > DECAY {
-            round(self.pitch_bias + DECAY * self.pitch_bias.signum() * -1., 3)
+            round(self.pitch_bias + DECAY * self.pitch_bias.signum() * -1., 5)
         } else {
             0.
         }
     }
+    /// Compute a new value of the aircraft's yaw based on decay and set it as the new yaw bias
     pub fn apply_yaw_decay(&mut self) {
         self.yaw_bias = if self.yaw_bias.abs() > DECAY {
-            round(self.yaw_bias + DECAY * self.yaw_bias.signum() * -1., 3)
+            round(self.yaw_bias + DECAY * self.yaw_bias.signum() * -1., 5)
         } else {
             0.
         }
     }
+    /// Compute a new value of the aircraft's roll based on decay and set it the as the new roll bias
     pub fn apply_roll_decay(&mut self) {
         self.roll_bias = if self.roll_bias.abs() > DECAY {
-            round(self.roll_bias + DECAY * self.roll_bias.signum() * -1., 3)
+            round(self.roll_bias + DECAY * self.roll_bias.signum() * -1., 5)
         } else {
             0.
         }

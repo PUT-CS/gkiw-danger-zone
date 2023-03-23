@@ -83,14 +83,13 @@ impl Default for Model {
             vertices: vec![],
             indices: vec![],
             textures: vec![],
-            vao: 999,
-            vbo: 999,
-            ebo: 999,
+            vao: u32::MAX,
+            vbo: u32::MAX,
+            ebo: u32::MAX,
             textures_loaded: vec![],
             model_matrix: Matrix4::from_value(1.0),
             directory: "".to_string(),
             position: Point3::new(0., 0., 0.),
-            //front: Vector3::unit_z() * -1.,
             front: Vector3::unit_z() * -1.,
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),
@@ -100,12 +99,7 @@ impl Default for Model {
 
 impl Steerable for Model {
     fn pitch(&mut self, amount: f32) {
-
-        // SOMETHING'S NOT RIGHT WITH HOW WE ROTATE HERE.
-        // VECTORS DONT GET UPDATED PROPERLY
-        
-        //let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
-        let rotation = Matrix4::from_axis_angle(self.right, Deg(amount));
+        let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
         //self.up = (rotation * self.up).normalize();
         //self.front = (rotation * self.front).normalize();
@@ -114,16 +108,15 @@ impl Steerable for Model {
     fn yaw(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
-        // self.front = (rotation * self.front).normalize();
-        // self.right = (rotation * self.right).normalize();
+        //self.front = (rotation * self.front).normalize();
+        //self.right = (rotation * self.right).normalize();
     }
 
     fn roll(&mut self, amount: f32) {
-        dbg!("Rotation around {}", self.front);
         let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
-        // self.up = (rotation * self.up).normalize();
-        // self.right = (rotation * self.right).normalize();
+        //self.up = (rotation * self.up).normalize();
+        //self.right = (rotation * self.right).normalize();
     }
     
     fn forward(&mut self, throttle: f32) {

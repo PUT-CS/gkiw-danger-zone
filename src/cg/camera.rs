@@ -33,7 +33,7 @@ const SPEED: f32 = 25.;
 const SENSITIVTY: f32 = 0.1;
 const ZOOM: f32 = 45.0;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Camera {
     pub position: Point3,
     pub front: Vector3,
@@ -49,7 +49,7 @@ pub struct Camera {
 impl Default for Camera {
     fn default() -> Camera {
         Camera {
-            position: Point3::new(0.0, 0.0, -5.0),
+            position: Point3::new(0.0, 0.0, 5.0),
             front: vec3(0.0, 0.0, -1.0),
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),

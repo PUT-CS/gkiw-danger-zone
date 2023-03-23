@@ -1,11 +1,21 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
-use crate::cg::{camera::ControlSurfaces, model::Model};
+use crate::cg::{
+    camera::{ControlSurfaces, Movement},
+    model::Model,
+};
 use lazy_static::lazy_static;
 use log::info;
 pub use paste::paste;
 use std::collections::HashMap;
+use crate::game::flight::control_surfaces::MAX_BIAS;
 use AircraftKind::*;
 
+const MAX_PITCH_BIAS: f32 = 0.25;
+const MAX_YAW_BIAS: f32 = 0.20;
+const MAX_ROLL_BIAS: f32 = 0.70;
+
+/// Struct representing an aircraft which can be steered and displayed
+#[derive(Clone, Debug)]
 pub struct Aircraft {
     model: Model,
     spec: AircraftSpec,
@@ -22,6 +32,8 @@ gen_ref_getters! {
 }
 
 #[derive(Hash, PartialEq, Eq, Debug)]
+/// Defines aircraft models available
+#[derive(Clone)]
 pub enum AircraftKind {
     Mig21,
     F16,
@@ -29,7 +41,7 @@ pub enum AircraftKind {
 
 lazy_static! {
     static ref BLUEPRINTS: HashMap<AircraftKind, AircraftSpec> =
-        HashMap::from([(Mig21, AircraftSpec::new([0.001, 0.001, 0.002]))]);
+        HashMap::from([(Mig21, AircraftSpec::new([0.0002, 0.0005, 0.0005]))]);
     static ref MODEL_PATHS: HashMap<AircraftKind, &'static str> =
         HashMap::from([(Mig21, "resources/objects/mig21/mig21.obj")]);
 }
@@ -54,6 +66,12 @@ impl Aircraft {
         &mut self.model
     }
 
+    pub fn set_decay(&mut self, c: ControlSurfaces, b: bool) {
+        self.controls_mut().set_decay(c, b);
+    }
+
+    /// Mutate the control parameters of the aircraft by making all the flap
+    /// biases closer to zero if that particular surface was not used by the player in this frame
     pub fn apply_decay(&mut self) {
         if self.controls().decay()[ControlSurfaces::Pitch as usize] {
             self.controls_mut().apply_pitch_decay()
@@ -66,23 +84,26 @@ impl Aircraft {
         }
     }
 }
-
+/// This implementation handles mutating the control parameters of the aircraft.
+/// It does not modify the actual model of the plane, only sets values
+/// which are later used to calculate the actual rotation of the model
 impl Steerable for Aircraft {
-    // modify Controls property according to AircraftSpec
+    /// Mutate the pitch flaps bias
     fn pitch(&mut self, amount: f32) {
-        *self.controls_mut().pitch_bias_mut() = (self.controls().pitch_bias()
-            + self.spec().pitch_rate() * amount.signum())
-        .clamp(-1., 1.);
+        *self.controls_mut().pitch_bias_mut() =
+            (self.controls().pitch_bias() + self.spec().pitch_rate() * amount.signum()).clamp(-MAX_PITCH_BIAS, MAX_PITCH_BIAS);
     }
-    fn roll(&mut self, amount: f32) {
-        *self.controls_mut().roll_bias_mut() = (self.controls().roll_bias()
-            + self.spec().roll_rate() * amount.signum())
-        .clamp(-1., 1.);
-    }
+    /// Mutate the yaw flaps bias
     fn yaw(&mut self, amount: f32) {
         *self.controls_mut().yaw_bias_mut() =
-            (self.controls().yaw_bias() + self.spec().yaw_rate() * amount.signum()).clamp(-1., 1.);
+            (self.controls().yaw_bias() + self.spec().yaw_rate() * amount.signum()).clamp(-MAX_YAW_BIAS, MAX_YAW_BIAS);
     }
+    /// Mutate the roll flaps bias
+    fn roll(&mut self, amount: f32) {
+        *self.controls_mut().roll_bias_mut() =
+            (self.controls().roll_bias() + self.spec().roll_rate() * amount.signum()).clamp(-MAX_ROLL_BIAS, MAX_ROLL_BIAS);
+    }
+    /// Mutate the throttle, adding 0.1 (subject to change)
     fn forward(&mut self, amount: f32) {
         *self.controls_mut().throttle_mut() += 0.1
     }

@@ -6,7 +6,8 @@ use log::info;
 
 lazy_static! {
     static ref TERRAINS: HashMap<TerrainType, &'static str> =
-        HashMap::from([(TerrainType::Desert, "resources/objects/terrain/terrain.obj")]);
+    //HashMap::from([(TerrainType::Desert, "resources/objects/terrain/terrain.obj")]);
+    HashMap::from([(TerrainType::Desert, "resources/objects/skybox/skybox.obj")]);
 }
 
 #[derive(Hash, PartialEq, Eq)]
