@@ -1,18 +1,20 @@
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
-use glfw::{Context, Glfw, Monitor, Window, WindowEvent};
-use itertools::Itertools;
-use log::info;
+use glfw::{Context, Glfw, Window, WindowEvent};
+use log::{info, warn};
 use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
 use crate::cg::{camera::Movement, terrain::Terrain};
-use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, Point3, SquareMatrix, Vector3};
+use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
 use std::ffi::CStr;
 
-use super::{enemy::Enemy, missile::Missile, player::Player};
+use super::flight::steerable::Steerable;
+use super::{enemy::Enemy, flight::aircraft::AircraftKind::*, missile::Missile, player::Player};
+
+const TARGET_ENEMIES: usize = 4;
 
 pub struct Game {
     player: Player,
@@ -28,9 +30,9 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
-        info!("Initialized GLFW");
         log4rs::init_file("log_config.yaml", Default::default()).unwrap();
         info!("Initialized log4rs");
+        info!("Initialized GLFW");
 
         glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
         glfw.window_hint(glfw::WindowHint::OpenGlProfile(
@@ -77,6 +79,17 @@ impl Game {
     pub fn update(&mut self, delta_time: f32) {
         self.player.apply_controls(delta_time * 200.);
         self.player.aircraft_mut().apply_decay();
+        // currently there will be 4 enemies stacked in one spot
+        self.respawn_enemies();
+    }
+
+    pub fn respawn_enemies(&mut self) {
+        let diff = TARGET_ENEMIES - self.enemies.len();
+        if diff > 0 {
+            warn!("Respawning {diff} enemies");
+        }
+        let mut new_enemies: Vec<Enemy> = (0..diff).map(|_| Enemy::new(Mig21)).collect();
+        self.enemies.append(&mut new_enemies);
         if self.targeted_enemies().is_some() {
             println!("LOCK");
         } else {
@@ -84,7 +97,8 @@ impl Game {
         }
     }
 
-    /// Check if the player
+    /// Check if the player aims their nose at an enemy, triggering a missile lock
+    /// countdown on one of them (lock not implemented yet)
     pub fn targeted_enemies(&self) -> Option<Vec<Player>> {
         let player_front = self.player.camera().front;
         let player_position = self.player.camera().position;
@@ -124,7 +138,7 @@ impl Game {
         //model_matrix = model_matrix * Matrix4::from_translation(vec3(0.0, 0., 0.0));
         model_matrix = model_matrix * Matrix4::from_angle_y(Deg(180.));
         shader.set_mat4(c_str!("model"), &model_matrix);
-        self.player.draw(&shader);
+        //self.player.draw(&shader);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
@@ -135,6 +149,10 @@ impl Game {
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
+
+        model_matrix = self.enemies[0].aircraft_mut().model().model_matrix();
+        shader.set_mat4(c_str!("model"), &model_matrix);
+        self.enemies[0].draw(shader);
 
         let mut model_matrix = self.player.cockpit.model_matrix()
             * Matrix4::from_translation(vec3(0.0, -0.3, 0.0))
@@ -150,6 +168,8 @@ impl Game {
         shader.set_mat4(c_str!("model"), &model_matrix);
         shader.set_mat4(c_str!("view"), &Matrix4::from_value(1.0));
         self.player.cockpit.draw(&shader);
+
+
     }
 
     pub fn process_events(

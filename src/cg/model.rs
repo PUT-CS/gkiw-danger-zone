@@ -88,7 +88,7 @@ impl Default for Model {
             ebo: u32::MAX,
             textures_loaded: vec![],
             model_matrix: Matrix4::from_value(1.0),
-            directory: "".to_string(),
+            directory: String::new(),
             position: Point3::new(0., 0., 0.),
             front: Vector3::unit_z() * -1.,
             up: Vector3::unit_y(),
@@ -101,15 +101,11 @@ impl Steerable for Model {
     fn pitch(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
-        //self.up = (rotation * self.up).normalize();
-        //self.front = (rotation * self.front).normalize();
     }
     
     fn yaw(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
-        //self.front = (rotation * self.front).normalize();
-        //self.right = (rotation * self.right).normalize();
     }
 
     fn roll(&mut self, amount: f32) {
@@ -130,17 +126,6 @@ impl Model {
     where
         T: ToString + AsRef<OsStr> + std::fmt::Display,
     {
-        info!("Creating new Model: {path}");
-        // let mut model = Model {
-        //     vertices: vec![],
-        //     indices: vec![],
-        //     textures: vec![],
-        //     vao: 0,
-        //     vbo: 0,
-        //     ebo: 0,
-        //     textures_loaded: vec![],
-        //     directory: "".to_string(),
-        // };
         let mut model = Model::default();
         model.load_model(path);
         unsafe { model.setup_mesh() }

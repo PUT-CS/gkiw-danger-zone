@@ -1,6 +1,4 @@
 use cg::shader::Shader;
-use game::flight::aircraft::AircraftKind::*;
-use game::player::Player;
 use glfw::Context;
 extern crate glfw;
 use crate::game::game::Game;
@@ -38,9 +36,6 @@ fn main() {
     let mut last_frame: f32 = 0.;
 
     let mut game = Game::new();
-    game.set_player(Player::new(Mig21));
-
-
 
     let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
 
