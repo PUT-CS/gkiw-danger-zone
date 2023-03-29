@@ -11,23 +11,24 @@ use crate::cg::{camera::Movement, terrain::Terrain};
 use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
 use std::ffi::CStr;
 
-use super::flight::steerable::Steerable;
+use super::id_gen::{IDGenerator, IDKind};
 use super::{enemy::Enemy, flight::aircraft::AircraftKind::*, missile::Missile, player::Player};
 
 const TARGET_ENEMIES: usize = 4;
 
-pub struct Game {
+pub struct Game<'a> {
     player: Player,
     enemies: Vec<Enemy>,
-    missiles: Vec<Missile>,
+    missiles: Vec<Missile<'a>>,
     terrain: Terrain,
     skybox: Model,
+    id_generator: IDGenerator,
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
 }
 
-impl Game {
+impl<'a> Game<'a> {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         log4rs::init_file("log_config.yaml", Default::default()).unwrap();
@@ -61,6 +62,8 @@ impl Game {
             gl::ClipControl(gl::LOWER_LEFT, gl::ZERO_TO_ONE);
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
             gl::Enable(gl::DEPTH_TEST);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
 
         Game {
@@ -69,6 +72,7 @@ impl Game {
             missiles: vec![],
             terrain: Terrain::default(),
             skybox: Model::new("resources/objects/skybox/skybox.obj"),
+            id_generator: IDGenerator::default(),
             glfw,
             window,
             events,
@@ -88,13 +92,13 @@ impl Game {
         if diff > 0 {
             warn!("Respawning {diff} enemies");
         }
-        let mut new_enemies: Vec<Enemy> = (0..diff).map(|_| Enemy::new(Mig21)).collect();
+        let mut new_enemies: Vec<Enemy> = (0..diff).map(|_| Enemy::new(Mig21, self.id_generator.get_new_id_of(IDKind::Enemy))).collect();
         self.enemies.append(&mut new_enemies);
-        if self.targeted_enemies().is_some() {
-            println!("LOCK");
-        } else {
-            println!("");
-        }
+        // if self.targeted_enemies().is_some() {
+        //     println!("LOCK");
+        // } else {
+        //     println!("");
+        // }
     }
 
     /// Check if the player aims their nose at an enemy, triggering a missile lock

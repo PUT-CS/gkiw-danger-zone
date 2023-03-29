@@ -27,7 +27,7 @@ impl Default for Player {
             aircraft: Aircraft::new(AircraftKind::Mig21),
             camera: Camera::default(),
             kills: 0,
-            cockpit: Model::new("resources/objects/cockpit/cockpit.obj"),
+            cockpit: Model::new("resources/objects/cockpit/cockpit_old.obj"),
         }
     }
 }

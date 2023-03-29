@@ -3,8 +3,8 @@ use glfw::Context;
 extern crate glfw;
 use crate::game::game::Game;
 
-const SCR_WIDTH: u32 = 1000;
-const SCR_HEIGHT: u32 = 1000;
+const SCR_WIDTH: u32 = 1920;
+const SCR_HEIGHT: u32 = 1080;
 
 mod macros;
 mod cg {
@@ -17,6 +17,7 @@ mod cg {
 mod game {
     pub mod enemy;
     pub mod game;
+    pub mod id_gen;
     pub mod missile;
     pub mod flight {
         pub mod aircraft;
@@ -37,7 +38,10 @@ fn main() {
 
     let mut game = Game::new();
 
-    let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
+    let shader = Shader::new(
+        "src/shaders/model.vs",
+        "src/shaders/fragment_transparent.fs",
+    );
 
     while !game.window.should_close() {
         let current_frame = game.glfw.get_time() as f32;

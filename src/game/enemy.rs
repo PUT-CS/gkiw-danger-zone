@@ -1,17 +1,22 @@
+use super::flight::aircraft::{Aircraft, AircraftKind};
 use crate::cg::shader::Shader;
-use super::flight::aircraft::{AircraftKind, Aircraft};
 
 /// Struct representing an enemy
 #[derive(Debug)]
 pub struct Enemy {
+    id: u32,
     aircraft: Aircraft,
-    destroyed: bool
+    destroyed: bool,
 }
 
 impl Enemy {
     /// Create a new enemy with the given aircraft kind
-    pub fn new(kind: AircraftKind) -> Self {
-        Enemy { aircraft: Aircraft::new(kind), destroyed: false }
+    pub fn new(kind: AircraftKind, id: u32) -> Self {
+        Enemy {
+            id,
+            aircraft: Aircraft::new(kind),
+            destroyed: false,
+        }
     }
     pub unsafe fn draw(&self, shader: &Shader) {
         self.aircraft.model().draw(shader);
@@ -24,3 +29,8 @@ impl Enemy {
     }
 }
 
+gen_ref_getters! {
+    Enemy,
+    id -> &u32,
+    aircraft -> &Aircraft,
+}
