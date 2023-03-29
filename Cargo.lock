@@ -240,6 +240,7 @@ dependencies = [
  "paste",
  "rand 0.5.6",
  "tobj",
+ "worldgen",
 ]
 
 [[package]]
@@ -1222,6 +1223,12 @@ name = "windows_x86_64_msvc"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9aec5da331524158c6d1a4ac0ab1541149c0b9505fde06423b02f5ef0106b9f0"
+
+[[package]]
+name = "worldgen"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9b77fba24c873b60af296c1f0c5639114186d1ac3c99f880a7bb590bdc04065"
 
 [[package]]
 name = "xml-rs"

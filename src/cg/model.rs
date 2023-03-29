@@ -6,16 +6,24 @@ use cgmath::Quaternion;
 use cgmath::Vector2;
 use cgmath::{vec2, vec3};
 use gl;
+use gl::DEBUG_CALLBACK_FUNCTION;
 use image;
 use image::DynamicImage::*;
 use image::GenericImage;
+use itertools::Position;
 use log::info;
+use worldgen::noisemap::NoiseMapGeneratorBase;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
 use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
 use tobj;
+use worldgen::noise::perlin::PerlinNoise;
+use worldgen::noisemap::{NoiseMapGenerator, NoiseMap, Seed, Step, Size};
+use worldgen::world::{World, Tile};
+use worldgen::world::tile::{Constraint, ConstraintType};
+use worldgen::constraint;
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -349,6 +357,32 @@ impl Model {
         );
 
         gl::BindVertexArray(0);
+    }
+    
+    pub fn randomize_height(&mut self) {
+	let noise = PerlinNoise::new();
+        
+	let nm1 = NoiseMap::new(noise)
+            .set(Seed::of("Hello?"))
+            .set(Step::of(0.005, 0.005));
+
+	let nm2 = NoiseMap::new(noise)
+            .set(Seed::of("World Hello!"))
+            .set(Step::of(0.05, 0.05));
+
+	let nm = Box::new(nm1 + nm2 * 4);
+	let chunk = nm.generate_sized_chunk(Size::of(100, 100),0,0);
+	let mut idx = 0;
+	for row in chunk{
+	    for number in row{
+		self.vertices[idx].position.y -= 1000000.0;
+		    //number  as f32 * 100.0;
+		idx += 1;
+	    }
+	}
+	//dbg!(&self.vertices[idx]);
+	
+	//println!("{:#?}",chunk);
     }
 }
 

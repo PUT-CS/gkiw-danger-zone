@@ -129,8 +129,9 @@ impl Game {
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
+	self.terrain.model.randomize_height();
         self.terrain.draw(&shader);
-
+	
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
         shader.set_mat4(c_str!("model"), &model_matrix);

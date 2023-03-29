@@ -6,8 +6,8 @@ use log::info;
 
 lazy_static! {
     static ref TERRAINS: HashMap<TerrainType, &'static str> =
-    //HashMap::from([(TerrainType::Desert, "resources/objects/terrain/terrain.obj")]);
-    HashMap::from([(TerrainType::Desert, "resources/objects/skybox/skybox.obj")]);
+    HashMap::from([(TerrainType::Desert, "resources/objects/terrain/terrain.obj")]);
+    //HashMap::from([(TerrainType::Desert, "resources/objects/skybox/skybox.obj")]);
 }
 
 #[derive(Hash, PartialEq, Eq)]
@@ -15,10 +15,11 @@ pub enum TerrainType {
     Ocean,
     Desert,
 }
-
+type Position = (i32, i32);
 pub struct Terrain {
-    model: Model,
+    pub model: Model,
     type_: TerrainType,
+    tmpmap: HashMap<Position, Model>
 }
 
 impl Default for Terrain {
@@ -38,6 +39,7 @@ impl Terrain {
         Terrain {
             model: Model::new(path),
             type_,
+	    tmpmap: HashMap::new()
         }
     }
     pub fn generate(&mut self) {
@@ -45,7 +47,7 @@ impl Terrain {
         // the model attribute has a vertices attribute.
         // each Vertex there has a position vector.
         // Modify the appropriate element of that position
-        // vector to alter vertex height
+        // vector to alter vertex height	
     }
     pub unsafe fn draw(&self, shader: &Shader) {
         self.model.draw(shader);
