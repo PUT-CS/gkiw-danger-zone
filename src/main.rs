@@ -1,6 +1,7 @@
 use cg::shader::Shader;
 use game::flight::aircraft::AircraftKind::*;
 use game::player::Player;
+use game::terrain::Terrain;
 use glfw::Context;
 extern crate glfw;
 use crate::game::game::Game;
@@ -25,6 +26,9 @@ fn main() {
 
     let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
 
+    let terrain = Terrain::default();
+    terrain.draw2(&shader, vec![(1,1), (2,2)]);
+    
     while !game.window.should_close() {
         let current_frame = game.glfw.get_time() as f32;
         delta_time = current_frame - last_frame;

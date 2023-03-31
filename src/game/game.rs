@@ -15,18 +15,18 @@ use std::ffi::CStr;
 use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};
 
-pub struct Game {
+pub struct Game<'a> {
     player: Player,
     enemies: Vec<Enemy>,
     missiles: Vec<Missile>,
-    terrain: Terrain,
+    terrain: Terrain<'a>,
     skybox: Model,
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
 }
 
-impl Game {
+impl<'a> Game<'a> {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         info!("Initialized GLFW");
