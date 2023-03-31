@@ -8,10 +8,11 @@ extern crate glfw;
 use self::glfw::{Action, Key};
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
-use crate::cg::{camera::Movement, terrain::Terrain};
+use crate::cg::camera::Movement;
 use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, Point3, SquareMatrix, Vector3};
 use std::ffi::CStr;
 
+use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};
 
 pub struct Game {
@@ -60,12 +61,14 @@ impl Game {
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
             gl::Enable(gl::DEPTH_TEST);
         }
-
+        let mut terrain = Terrain::default();
+        terrain.template_model.randomize_height();
+        terrain.template_model.reload_mesh();
         Game {
             player: Player::default(),
             enemies: vec![],
             missiles: vec![],
-            terrain: Terrain::default(),
+            terrain,
             skybox: Model::new("resources/objects/skybox/skybox.obj"),
             glfw,
             window,
@@ -77,11 +80,6 @@ impl Game {
     pub fn update(&mut self, delta_time: f32) {
         self.player.apply_controls(delta_time * 200.);
         self.player.aircraft_mut().apply_decay();
-        if self.targeted_enemies().is_some() {
-            println!("LOCK");
-        } else {
-            println!("");
-        }
     }
 
     /// Check if the player
@@ -124,12 +122,11 @@ impl Game {
         //model_matrix = model_matrix * Matrix4::from_translation(vec3(0.0, 0., 0.0));
         model_matrix = model_matrix * Matrix4::from_angle_y(Deg(180.));
         shader.set_mat4(c_str!("model"), &model_matrix);
-        self.player.draw(&shader);
+        //self.player.draw(&shader);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
-        model_matrix = model_matrix * Matrix4::from_scale(10000.0);
+        model_matrix = model_matrix * Matrix4::from_scale(15.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
-	self.terrain.model.randomize_height();
         self.terrain.draw(&shader);
 	
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
@@ -150,7 +147,7 @@ impl Game {
             ));
         shader.set_mat4(c_str!("model"), &model_matrix);
         shader.set_mat4(c_str!("view"), &Matrix4::from_value(1.0));
-        self.player.cockpit.draw(&shader);
+        //self.player.cockpit.draw(&shader);
     }
 
     pub fn process_events(

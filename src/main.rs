@@ -9,25 +9,8 @@ const SCR_WIDTH: u32 = 1000;
 const SCR_HEIGHT: u32 = 1000;
 
 mod macros;
-mod cg {
-    pub mod camera;
-    pub mod model;
-    pub mod shader;
-    pub mod terrain;
-    pub mod transformation;
-}
-mod game {
-    pub mod enemy;
-    pub mod game;
-    pub mod missile;
-    pub mod flight {
-        pub mod aircraft;
-        pub mod control_surfaces;
-        pub mod spec;
-        pub mod steerable;
-    }
-    pub mod player;
-}
+mod cg;
+mod game;
 
 fn main() {
     let mut first_mouse = true;
@@ -39,8 +22,6 @@ fn main() {
 
     let mut game = Game::new();
     game.set_player(Player::new(Mig21));
-
-
 
     let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
 
