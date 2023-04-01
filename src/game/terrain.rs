@@ -92,8 +92,8 @@ impl<'a> Terrain<'a> {
     pub unsafe fn draw(&self, shader: &Shader) {
         self.template_model.draw(shader);
     }
-
-    pub fn draw2(&self, shader: &Shader, positions: Vec<Position>) {
+    
+    pub fn draw2(&self, shader: &Shader, positions: &Vec<Position>) {
 
         // Check which chunks were successfuly obtained from the chunk map
         let chunk_results = positions.iter().map(|&pos| match self.chunk_map.get(&pos) {

@@ -19,6 +19,7 @@ use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
 use tobj;
+use log::error;
 use worldgen::constraint;
 use worldgen::noise::perlin::PerlinNoise;
 use worldgen::noisemap::NoiseMapGeneratorBase;
@@ -161,6 +162,12 @@ impl Model {
     }
 
     pub unsafe fn draw(&self, shader: &Shader) {
+
+        if self.directory == "" {
+            error!("Attempt to draw a model that was not loaded. Use the `load_model` method first.");
+            panic!("Attempt to draw a model that was not loaded");
+        }
+        
         // bind appropriate textures
         let mut diffuse_nr = 0;
         let mut specular_nr = 0;

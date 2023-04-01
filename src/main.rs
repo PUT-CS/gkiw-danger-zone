@@ -27,7 +27,7 @@ fn main() {
     let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
 
     let terrain = Terrain::default();
-    terrain.draw2(&shader, vec![(1,1), (2,2)]);
+    terrain.draw2(&shader, &vec![(1,1), (2,2)]);
     
     while !game.window.should_close() {
         let current_frame = game.glfw.get_time() as f32;
