@@ -1,32 +1,32 @@
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
-use glfw::{Context, Glfw, Monitor, Window, WindowEvent};
-use itertools::Itertools;
+use glfw::{Context, Glfw, Window, WindowEvent};
 use log::info;
+use rayon::ThreadPoolBuilder;
 use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
+use crate::cg::camera::Movement;
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
-use crate::cg::camera::Movement;
-use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, Point3, SquareMatrix, Vector3};
+use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
 use std::ffi::CStr;
 
 use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};
 
-pub struct Game<'a> {
+pub struct Game {
     player: Player,
     enemies: Vec<Enemy>,
     missiles: Vec<Missile>,
-    terrain: Terrain<'a>,
+    terrain: Terrain,
     skybox: Model,
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
 }
 
-impl<'a> Game<'a> {
+impl Game {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         info!("Initialized GLFW");
@@ -61,9 +61,16 @@ impl<'a> Game<'a> {
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
             gl::Enable(gl::DEPTH_TEST);
         }
+
+        ThreadPoolBuilder::new()
+            .num_threads(256)
+            .build_global()
+            .expect("Configure global rayon threadpool");
+
         let mut terrain = Terrain::default();
-        terrain.template_model.randomize_height();
-        terrain.template_model.reload_mesh();
+        terrain.generate();
+        //terrain.template_model.randomize_height();
+        //terrain.template_model.reload_mesh();
         Game {
             player: Player::default(),
             enemies: vec![],
@@ -127,8 +134,9 @@ impl<'a> Game<'a> {
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(15.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
-        self.terrain.draw(&shader);
-	
+        let request = vec![(1,1), (2,2), (3,3)];
+        self.terrain.draw(&shader, &request);
+
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
         shader.set_mat4(c_str!("model"), &model_matrix);

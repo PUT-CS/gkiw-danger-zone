@@ -1,8 +1,13 @@
+use cpu_time::ProcessTime;
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use log::info;
+use log::{info, warn};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::ThreadPool;
 use std::collections::HashMap;
+use std::ops::Range;
 use std::thread;
+use std::time::Instant;
 use std::{mem::size_of_val, sync::mpsc};
 use worldgen::{
     noise::perlin::PerlinNoise,
@@ -13,10 +18,14 @@ use worldgen::{
 };
 
 use crate::cg::{model::Model, shader::Shader};
+const CHUNKS_X: i64 = 16;
+const CHUNKS_Y: i64 = 16;
+const CHUNK_X_RANGE: Range<i64> = -CHUNKS_X..CHUNKS_X + 1;
+const CHUNK_Y_RANGE: Range<i64> = -CHUNKS_X..CHUNKS_X + 1;
 
-use super::chunk::{Chunk, self};
+use super::chunk::{self, Chunk};
 
-const CHUNK_SIZE: i64 = 100;
+pub const CHUNK_SIZE: i64 = 100;
 
 lazy_static! {
     static ref TERRAINS: HashMap<TerrainType, &'static str> =
@@ -30,30 +39,17 @@ pub enum TerrainType {
     Desert,
 }
 
-pub enum ChunkResult<'a> {
-    Ok(&'a Chunk),
-    None(Position),
-}
-
-impl<'a> ChunkResult<'a> {
-    pub fn is_ok(&self) -> bool {
-        matches!(*self, ChunkResult::Ok(_))
-    }
-    pub fn is_none(&self) -> bool {
-        matches!(*self, ChunkResult::None(_))
-    }
-}
-
 pub type Position = (i64, i64);
+pub type ChunkGenerator =
+    NoiseMapCombination<NoiseMap<PerlinNoise>, ScaledNoiseMap<NoiseMap<PerlinNoise>>>;
 
-pub struct Terrain<'a> {
+pub struct Terrain {
     pub template_model: Box<Model>,
-    generator:
-        Box<NoiseMapCombination<NoiseMap<PerlinNoise>, ScaledNoiseMap<NoiseMap<PerlinNoise>>>>,
-    chunk_map: HashMap<Position, &'a Chunk>,
+    generator: Box<ChunkGenerator>,
+    chunk_map: HashMap<Position, Chunk>,
 }
 
-impl<'a> Default for Terrain<'a> {
+impl Default for Terrain {
     fn default() -> Self {
         Terrain::new(
             TERRAINS
@@ -64,7 +60,7 @@ impl<'a> Default for Terrain<'a> {
     }
 }
 
-impl<'a> Terrain<'a> {
+impl Terrain {
     pub fn new(path: &str, type_: TerrainType) -> Self {
         info!("Creating new Terrain with template: {path}",);
         let noise = PerlinNoise::new();
@@ -80,104 +76,39 @@ impl<'a> Terrain<'a> {
             h: CHUNK_SIZE,
         });
 
+        let chunk_map = HashMap::new();
+
         Terrain {
             template_model: Box::new(Model::new(
                 TERRAINS.get(&type_).expect("Path for terrain kind exists"),
             )),
             generator,
-            chunk_map: HashMap::new(),
+            chunk_map,
         }
     }
 
-    pub unsafe fn draw(&self, shader: &Shader) {
-        self.template_model.draw(shader);
+    pub unsafe fn draw(&self, shader: &Shader, request: &[Position]) {
+        self.chunk_map
+            .iter()
+            .filter(|pair| request.contains(pair.0))
+            .for_each(|pair| pair.1.draw(shader));
     }
-    
-    pub fn draw2(&self, shader: &Shader, positions: &Vec<Position>) {
 
-        // Check which chunks were successfuly obtained from the chunk map
-        let chunk_results = positions.iter().map(|&pos| match self.chunk_map.get(&pos) {
-            Some(chunk) => ChunkResult::Ok(chunk),
-            None => ChunkResult::None(pos),
-        });
-
-        // Split the results into two vectors.
-        // 
-        
-        //Successful 
-        let mut chunks: Vec<&Chunk> = chunk_results
-            .clone()
-            .filter(|res| res.is_ok())
-            .map(|res| match res {
-                ChunkResult::Ok(chunk) => chunk,
-                _ => unreachable!(),
-            })
+    pub fn generate(&mut self) {
+        let start = Instant::now();
+        warn!("Generating terrain");
+        let positions: Vec<Position> = CHUNK_X_RANGE.cartesian_product(CHUNK_Y_RANGE).collect();
+        let chunks: Vec<(Position, Chunk)> = positions
+            .par_iter()
+            .map(|pos| (*pos, Chunk::new(pos, &self.generator, &self.template_model)))
             .collect();
-        
-        // Unsuccessful
-        let requests: Vec<Position> = chunk_results
-            .filter(|res| res.is_none())
-            .map(|res| match res {
-                ChunkResult::None(pos) => pos,
-                _ => unreachable!(),
-            })
-            .collect();
-
-        let mut children = vec![];
-        let length = requests.len();
-
-        // Create the sender and receiver.
-        // Each thread will handle a different request and send the created Chunk to the receiver.
-        let (tx, rx) = mpsc::channel::<Chunk>();
-        
-        for position in requests {
-            // Each thread will be given its own copy of the sender object
-            let thread_tx = tx.clone();
-            // As well as the generator
-            let generator = self.generator.clone();
-            // And the template model (this copies, so it's subject to improvement) TODO
-            let template = self.template_model.clone();
-            // Spawn the worker thread
-            let child = thread::spawn(move || {
-                let mut chunk = Chunk::new(*template);
-                let heights = generator.generate_sized_chunk(
-                    Size {
-                        w: CHUNK_SIZE,
-                        h: CHUNK_SIZE,
-                    },
-                    position.0,
-                    position.1,
-                );
-                chunk.apply_heights(heights);
-                // Send the chunk down the channel, exit
-                thread_tx.send(chunk).expect("Send chunk");
-                info!("Generated chunk at {position:?}");
-            });
-            // Add the thread handle to a vec so it can be joined later. (avoids exiting before finishing work)
-            children.push(child);
+        for mut pair in chunks {
+            pair.1.model.reload_mesh();
+            self.chunk_map.insert(pair.0, pair.1);
         }
-        // We will temporarily put received chunks in Boxes (may be improved) TODO
-        let mut tmp_boxes = vec![];
-
-        // Receive all chunks. rx.recv() is blocking, so we can be sure that it receives the required amoun of chunks,
-        // no additional logic required
-        for _ in 0..length {
-            let received = rx.recv().expect("Receive chunk");
-            tmp_boxes.push(Box::new(received));
-        }
-
-        // Join all the spawned threads
-        for child in children {
-            child.join().expect("Join thread");
-        }
-
-        // Convert Boxes to references and join both vectors
-        let mut new_chunks: Vec<&Chunk> = tmp_boxes.iter().map(|b| b.as_ref()).collect();
-        chunks.append(&mut new_chunks);
-
-        // Draw all the requested chunks
-        for chunk in chunks {
-            chunk.draw(shader);
-        }
+        warn!(
+            "Finished terrain generation. Took {}ms",
+            start.elapsed().as_millis()
+        );
     }
 }

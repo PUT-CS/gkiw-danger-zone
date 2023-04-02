@@ -380,7 +380,7 @@ impl Model {
             .set(Step::of(0.005, 0.005));
 
         let nm2 = NoiseMap::new(noise)
-            .set(Seed::of("Wdsdadorld"))
+            .set(Seed::of("dasdasdada"))
             .set(Step::of(0.05, 0.05));
 
         let nm = Box::new(nm1 + nm2 * 4);
