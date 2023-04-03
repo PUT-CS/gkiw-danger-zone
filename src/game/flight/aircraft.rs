@@ -1,13 +1,11 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
 use crate::cg::{
-    camera::{ControlSurfaces, Movement},
+    camera::ControlSurfaces,
     model::Model,
 };
 use lazy_static::lazy_static;
 use log::info;
-pub use paste::paste;
 use std::collections::HashMap;
-use crate::game::flight::control_surfaces::MAX_BIAS;
 use AircraftKind::*;
 
 const MAX_PITCH_BIAS: f32 = 0.25;

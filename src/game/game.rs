@@ -15,23 +15,26 @@ use std::ffi::CStr;
 use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};
 
-pub struct Game {
+const TARGET_ENEMIES: usize = 4;
+
+pub struct Game<'a> {
     player: Player,
     enemies: Vec<Enemy>,
-    missiles: Vec<Missile>,
+    missiles: Vec<Missile<'a>>,
     terrain: Terrain,
     skybox: Model,
+    id_generator: IDGenerator,
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
 }
 
-impl Game {
+impl<'a> Game<'a> {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
-        info!("Initialized GLFW");
         log4rs::init_file("log_config.yaml", Default::default()).unwrap();
         info!("Initialized log4rs");
+        info!("Initialized GLFW");
 
         glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
         glfw.window_hint(glfw::WindowHint::OpenGlProfile(
@@ -60,6 +63,8 @@ impl Game {
             gl::ClipControl(gl::LOWER_LEFT, gl::ZERO_TO_ONE);
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
             gl::Enable(gl::DEPTH_TEST);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
 
         ThreadPoolBuilder::new()
@@ -77,6 +82,7 @@ impl Game {
             missiles: vec![],
             terrain,
             skybox: Model::new("resources/objects/skybox/skybox.obj"),
+            id_generator: IDGenerator::default(),
             glfw,
             window,
             events,
@@ -87,9 +93,26 @@ impl Game {
     pub fn update(&mut self, delta_time: f32) {
         self.player.apply_controls(delta_time * 200.);
         self.player.aircraft_mut().apply_decay();
+        // currently there will be 4 enemies stacked in one spot
+        self.respawn_enemies();
     }
 
-    /// Check if the player
+    pub fn respawn_enemies(&mut self) {
+        let diff = TARGET_ENEMIES - self.enemies.len();
+        if diff > 0 {
+            warn!("Respawning {diff} enemies");
+        }
+        let mut new_enemies: Vec<Enemy> = (0..diff).map(|_| Enemy::new(Mig21, self.id_generator.get_new_id_of(IDKind::Enemy))).collect();
+        self.enemies.append(&mut new_enemies);
+        // if self.targeted_enemies().is_some() {
+        //     println!("LOCK");
+        // } else {
+        //     println!("");
+        // }
+    }
+
+    /// Check if the player aims their nose at an enemy, triggering a missile lock
+    /// countdown on one of them (lock not implemented yet)
     pub fn targeted_enemies(&self) -> Option<Vec<Player>> {
         let player_front = self.player.camera().front;
         let player_position = self.player.camera().position;
@@ -142,6 +165,10 @@ impl Game {
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
 
+        model_matrix = self.enemies[0].aircraft_mut().model().model_matrix();
+        shader.set_mat4(c_str!("model"), &model_matrix);
+        self.enemies[0].draw(shader);
+
         let mut model_matrix = self.player.cockpit.model_matrix()
             * Matrix4::from_translation(vec3(0.0, -0.3, 0.0))
             * Matrix4::from_scale(0.5)
@@ -155,7 +182,9 @@ impl Game {
             ));
         shader.set_mat4(c_str!("model"), &model_matrix);
         shader.set_mat4(c_str!("view"), &Matrix4::from_value(1.0));
-        //self.player.cockpit.draw(&shader);
+        self.player.cockpit.draw(&shader);
+
+
     }
 
     pub fn process_events(

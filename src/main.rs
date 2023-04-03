@@ -6,12 +6,30 @@ use glfw::Context;
 extern crate glfw;
 use crate::game::game::Game;
 
-const SCR_WIDTH: u32 = 1000;
-const SCR_HEIGHT: u32 = 1000;
+const SCR_WIDTH: u32 = 1920;
+const SCR_HEIGHT: u32 = 1080;
 
 mod macros;
-mod cg;
-mod game;
+mod cg {
+    pub mod camera;
+    pub mod model;
+    pub mod shader;
+    pub mod terrain;
+    pub mod transformation;
+}
+mod game {
+    pub mod enemy;
+    pub mod game;
+    pub mod id_gen;
+    pub mod missile;
+    pub mod flight {
+        pub mod aircraft;
+        pub mod control_surfaces;
+        pub mod spec;
+        pub mod steerable;
+    }
+    pub mod player;
+}
 
 fn main() {
     let mut first_mouse = true;
@@ -22,10 +40,12 @@ fn main() {
     let mut last_frame: f32 = 0.;
 
     let mut game = Game::new();
-    game.set_player(Player::new(Mig21));
 
-    let shader = Shader::new("src/shaders/model.vs", "src/shaders/model.fs");
-    
+    let shader = Shader::new(
+        "src/shaders/model.vs",
+        "src/shaders/fragment_transparent.fs",
+    );
+
     while !game.window.should_close() {
         let current_frame = game.glfw.get_time() as f32;
         delta_time = current_frame - last_frame;
