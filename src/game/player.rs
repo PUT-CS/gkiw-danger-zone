@@ -33,6 +33,12 @@ impl Default for Player {
     }
 }
 
+impl Drawable for Player {
+    unsafe fn draw(&self, shader: &Shader) {
+        self.aircraft.model().draw(shader);
+    } 
+}
+
 impl Player {
     pub fn new(aircraft_kind: AircraftKind) -> Self {
         Player {

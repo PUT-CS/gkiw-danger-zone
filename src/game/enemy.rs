@@ -10,6 +10,13 @@ pub struct Enemy {
     destroyed: bool,
 }
 
+impl Drawable for Enemy {
+    unsafe fn draw(&self, shader: &Shader) {
+        self.aircraft.model().draw(shader);
+    }
+    
+}
+
 impl Enemy {
     /// Create a new enemy with the given aircraft kind
     pub fn new(kind: AircraftKind, id: u32) -> Self {

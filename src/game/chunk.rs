@@ -29,6 +29,12 @@ impl Chunk {
     }
 }
 
+impl Drawable for Chunk {
+    unsafe fn draw(&self, shader: &Shader) {
+        self.model.draw(shader);
+    }
+}
+
 impl Chunk {
     pub fn draw(&self, shader: &Shader) {
         unsafe {
