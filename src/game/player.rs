@@ -1,5 +1,4 @@
 use super::flight::aircraft::{Aircraft, AircraftKind};
-use crate::game::drawable::Drawable;
 use crate::cg::{
     camera::{Camera, ControlSurfaces, Movement, Movement::*},
     model::Model,

@@ -10,11 +10,10 @@ use self::glfw::{Action, Key};
 use crate::cg::camera::Movement;
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
-use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
 use crate::game::flight::aircraft::AircraftKind::Mig21;
-use crate::game::id_gen::{IDGenerator,IDKind};
+use crate::game::id_gen::{IDGenerator, IDKind};
+use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
 use std::ffi::CStr;
-use crate::game::drawable::Drawable;
 
 use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};
@@ -106,7 +105,9 @@ impl<'a> Game<'a> {
         if diff > 0 {
             warn!("Respawning {diff} enemies");
         }
-        let mut new_enemies: Vec<Enemy> = (0..diff).map(|_| Enemy::new(Mig21, self.id_generator.get_new_id_of(IDKind::Enemy))).collect();
+        let mut new_enemies: Vec<Enemy> = (0..diff)
+            .map(|_| Enemy::new(Mig21, self.id_generator.get_new_id_of(IDKind::Enemy)))
+            .collect();
         self.enemies.append(&mut new_enemies);
         // if self.targeted_enemies().is_some() {
         //     println!("LOCK");
@@ -161,7 +162,7 @@ impl<'a> Game<'a> {
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(15.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
-        let request = vec![(1,1), (2,2), (3,3)];
+        let request = vec![(1, 1), (2, 2), (3, 3)];
         self.terrain.draw(&shader, &request);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
@@ -187,8 +188,6 @@ impl<'a> Game<'a> {
         shader.set_mat4(c_str!("model"), &model_matrix);
         shader.set_mat4(c_str!("view"), &Matrix4::from_value(1.0));
         self.player.cockpit.draw(&shader);
-
-
     }
 
     pub fn process_events(

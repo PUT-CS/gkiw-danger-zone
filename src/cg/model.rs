@@ -6,12 +6,9 @@ use cgmath::Quaternion;
 use cgmath::Vector2;
 use cgmath::{vec2, vec3};
 use gl;
-use gl::DEBUG_CALLBACK_FUNCTION;
 use image;
 use image::DynamicImage::*;
 use image::GenericImage;
-use itertools::Position;
-use log::info;
 use log::warn;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
@@ -20,12 +17,9 @@ use std::path::Path;
 use std::ptr;
 use tobj;
 use log::error;
-use worldgen::constraint;
 use worldgen::noise::perlin::PerlinNoise;
 use worldgen::noisemap::NoiseMapGeneratorBase;
 use worldgen::noisemap::{NoiseMap, NoiseMapGenerator, Seed, Size, Step};
-use worldgen::world::tile::{Constraint, ConstraintType};
-use worldgen::world::{Tile, World};
 use crate::game::drawable::Drawable;
 
 #[repr(C)]

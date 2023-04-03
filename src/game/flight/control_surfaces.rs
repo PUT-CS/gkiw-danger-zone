@@ -1,7 +1,6 @@
 use crate::cg::camera::ControlSurfaces;
 
 const DECAY: f32 = 0.0004;
-pub const MAX_BIAS: f32 = 0.5;
 
 #[derive(Clone, Debug)]
 /// Struct describing the mechanical state of the control parameters in the aircraft.

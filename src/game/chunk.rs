@@ -1,11 +1,6 @@
-use std::{time::Duration, fmt::Debug};
-use crate::game::drawable::Drawable;
-
-use log::info;
+use std::fmt::Debug;
 use worldgen::noisemap::{NoiseMapGeneratorBase, Size};
-
 use crate::cg::{model::Model, shader::Shader};
-
 use super::terrain::{ChunkGenerator, Position, CHUNK_SIZE};
 
 pub struct Chunk {

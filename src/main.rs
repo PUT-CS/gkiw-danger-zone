@@ -1,9 +1,5 @@
 use cg::shader::Shader;
-use crate::game::flight::aircraft::AircraftKind::Mig21;
-use game::player::Player;
-use game::terrain::Terrain;
 use glfw::Context;
-use log::warn;
 extern crate glfw;
 use crate::game::game::Game;
 

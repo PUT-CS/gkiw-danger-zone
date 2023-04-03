@@ -1,18 +1,14 @@
-use cpu_time::ProcessTime;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use log::{info, warn};
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use rayon::ThreadPool;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::ops::Range;
-use std::thread;
 use std::time::Instant;
-use std::{mem::size_of_val, sync::mpsc};
 use worldgen::{
     noise::perlin::PerlinNoise,
     noisemap::{
-        NoiseMap, NoiseMapCombination, NoiseMapGenerator, NoiseMapGeneratorBase, ScaledNoiseMap,
+        NoiseMap, NoiseMapCombination, NoiseMapGenerator, ScaledNoiseMap,
         Seed, Size, Step,
     },
 };
@@ -21,7 +17,7 @@ use crate::cg::{model::Model, shader::Shader};
 const CHUNKS_X: i64 = 16;
 const CHUNKS_Y: i64 = 16;
 const CHUNK_X_RANGE: Range<i64> = -CHUNKS_X..CHUNKS_X + 1;
-const CHUNK_Y_RANGE: Range<i64> = -CHUNKS_X..CHUNKS_X + 1;
+const CHUNK_Y_RANGE: Range<i64> = -CHUNKS_Y..CHUNKS_Y + 1;
 
 use crate::game::chunk::Chunk;
 
