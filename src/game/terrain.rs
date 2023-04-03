@@ -9,6 +9,7 @@ use std::ops::Range;
 use std::thread;
 use std::time::Instant;
 use std::{mem::size_of_val, sync::mpsc};
+use crate::game::drawable::Drawable;
 use worldgen::{
     noise::perlin::PerlinNoise,
     noisemap::{

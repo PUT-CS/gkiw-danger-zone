@@ -48,9 +48,6 @@ impl Player {
             cockpit: Model::new("resources/objects/cockpit/cockpit.obj"),
         }
     }
-    pub unsafe fn draw(&self, shader: &Shader) {
-        self.aircraft.model().draw(shader);
-    }
     pub fn aircraft_mut(&mut self) -> &mut Aircraft {
         &mut self.aircraft
     }

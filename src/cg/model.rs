@@ -207,63 +207,6 @@ impl Model {
     pub fn model_matrix(&self) -> Matrix4 {
         self.model_matrix
     }
-    pub unsafe fn draw(&self, shader: &Shader) {
-	
-        if self.directory == "" {
-            error!("Attempt to draw a model that was not loaded. Use the `load_model` method first.");
-            panic!("Attempt to draw a model that was not loaded");
-        }
-        
-        // bind appropriate textures
-        let mut diffuse_nr = 0;
-        let mut specular_nr = 0;
-        let mut normal_nr = 0;
-        let mut height_nr = 0;
-        for (i, texture) in self.textures.iter().enumerate() {
-            gl::ActiveTexture(gl::TEXTURE0 + i as u32);
-            let name = &texture.type_;
-            let number = match name.as_str() {
-                "texture_diffuse" => {
-                    diffuse_nr += 1;
-                    diffuse_nr
-                }
-                "texture_specular" => {
-                    specular_nr += 1;
-                    specular_nr
-                }
-                "texture_normal" => {
-                    normal_nr += 1;
-                    normal_nr
-                }
-                "texture_height" => {
-                    height_nr += 1;
-                    height_nr
-                }
-                _ => panic!("unknown texture type"),
-            };
-            // set the sampler to the correct texture unit
-            let sampler = CString::new(format!("{}{}", name, number)).unwrap();
-            gl::Uniform1i(
-                gl::GetUniformLocation(shader.id, sampler.as_ptr()),
-                i as i32,
-            );
-            // bind the texture
-            gl::BindTexture(gl::TEXTURE_2D, texture.id);
-        }
-
-        // draw mesh
-        gl::BindVertexArray(self.vao);
-        gl::DrawElements(
-            gl::TRIANGLES,
-            self.indices.len() as i32,
-            gl::UNSIGNED_INT,
-            ptr::null(),
-        );
-        gl::BindVertexArray(0);
-
-        // always good practice to set everything back to defaults once configured.
-        gl::ActiveTexture(gl::TEXTURE0);
-    }
 
     // load a model from file and stores the resulting meshes in the meshes vector.
     pub fn load_model<T>(&mut self, path: T)
