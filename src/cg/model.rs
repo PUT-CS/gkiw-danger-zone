@@ -3,7 +3,6 @@ use crate::game::flight::steerable::Steerable;
 use cgmath::prelude::*;
 use cgmath::Deg;
 use cgmath::Quaternion;
-use cgmath::Vector2;
 use cgmath::{vec2, vec3};
 use gl;
 use image;
@@ -21,45 +20,8 @@ use worldgen::noise::perlin::PerlinNoise;
 use worldgen::noisemap::NoiseMapGeneratorBase;
 use worldgen::noisemap::{NoiseMap, NoiseMapGenerator, Seed, Size, Step};
 use crate::game::drawable::Drawable;
-
-#[repr(C)]
-#[derive(Debug, Clone)]
-pub struct Vertex {
-    pub position: Vector3,
-    pub normal: Vector3,
-    pub tex_coords: Vector2<f32>,
-    pub tangent: Vector3,
-    pub bitangent: Vector3,
-}
-
-impl Default for Vertex {
-    fn default() -> Self {
-        Vertex {
-            position: Vector3::zero(),
-            normal: Vector3::zero(),
-            tex_coords: Vector2::zero(),
-            tangent: Vector3::zero(),
-            bitangent: Vector3::zero(),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Texture {
-    pub id: u32,
-    pub type_: String,
-    pub path: String,
-}
-
-impl Default for Texture {
-    fn default() -> Self {
-        Texture {
-            id: 0,
-            type_: "none".to_string(),
-            path: "none".to_string(),
-        }
-    }
-}
+use super::texture::Texture;
+use super::vertex::Vertex;
 
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
@@ -116,8 +78,6 @@ impl Steerable for Model {
     fn roll(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
-        //self.up = (rotation * self.up).normalize();
-        //self.right = (rotation * self.right).normalize();
     }
 
     fn forward(&mut self, throttle: f32) {
@@ -196,6 +156,10 @@ impl Model {
         model.load_model(path);
         unsafe { model.setup_mesh() }
         model
+    }
+
+    pub fn scale(&mut self, scale: f32) {
+        self.model_matrix = self.model_matrix * Matrix4::from_scale(scale);
     }
 
     pub fn model_matrix(&self) -> Matrix4 {

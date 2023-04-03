@@ -12,14 +12,12 @@ use worldgen::{
         Seed, Size, Step,
     },
 };
-
+use crate::game::chunk::Chunk;
 use crate::cg::{model::Model, shader::Shader};
 const CHUNKS_X: i64 = 16;
 const CHUNKS_Y: i64 = 16;
 const CHUNK_X_RANGE: Range<i64> = -CHUNKS_X..CHUNKS_X + 1;
 const CHUNK_Y_RANGE: Range<i64> = -CHUNKS_Y..CHUNKS_Y + 1;
-
-use crate::game::chunk::Chunk;
 
 pub const CHUNK_SIZE: i64 = 100;
 
