@@ -60,7 +60,7 @@ impl Player {
             .yaw(controls.yaw_bias() * delta_time);
         self.camera_mut()
             .roll(controls.roll_bias() * delta_time);
-        self.camera_mut().forward(controls.throttle());
+        //self.camera_mut().forward(controls.throttle());
     }
 
     /// Handle key events meant for player controls.

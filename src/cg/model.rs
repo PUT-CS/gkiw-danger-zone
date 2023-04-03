@@ -6,16 +6,26 @@ use cgmath::Quaternion;
 use cgmath::Vector2;
 use cgmath::{vec2, vec3};
 use gl;
+use gl::DEBUG_CALLBACK_FUNCTION;
 use image;
 use image::DynamicImage::*;
 use image::GenericImage;
+use itertools::Position;
 use log::info;
+use log::warn;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
 use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
 use tobj;
+use log::error;
+use worldgen::constraint;
+use worldgen::noise::perlin::PerlinNoise;
+use worldgen::noisemap::NoiseMapGeneratorBase;
+use worldgen::noisemap::{NoiseMap, NoiseMapGenerator, Seed, Size, Step};
+use worldgen::world::tile::{Constraint, ConstraintType};
+use worldgen::world::{Tile, World};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -102,7 +112,7 @@ impl Steerable for Model {
         let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
     }
-    
+
     fn yaw(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
@@ -114,7 +124,7 @@ impl Steerable for Model {
         //self.up = (rotation * self.up).normalize();
         //self.right = (rotation * self.right).normalize();
     }
-    
+
     fn forward(&mut self, throttle: f32) {
         self.position += self.front * throttle;
         self.model_matrix = self.model_matrix * Matrix4::from_translation(self.front * throttle);
@@ -137,6 +147,12 @@ impl Model {
     }
 
     pub unsafe fn draw(&self, shader: &Shader) {
+
+        if self.directory == "" {
+            error!("Attempt to draw a model that was not loaded. Use the `load_model` method first.");
+            panic!("Attempt to draw a model that was not loaded");
+        }
+        
         // bind appropriate textures
         let mut diffuse_nr = 0;
         let mut specular_nr = 0;
@@ -189,7 +205,7 @@ impl Model {
     }
 
     // load a model from file and stores the resulting meshes in the meshes vector.
-    fn load_model<T>(&mut self, path: T)
+    pub fn load_model<T>(&mut self, path: T)
     where
         T: ToString + AsRef<OsStr>,
     {
@@ -265,6 +281,10 @@ impl Model {
         texture
     }
 
+    pub fn reload_mesh(&mut self) {
+        unsafe { self.setup_mesh() };
+    }
+
     unsafe fn setup_mesh(&mut self) {
         // create buffers/arrays
         gl::GenVertexArrays(1, &mut self.vao);
@@ -334,6 +354,29 @@ impl Model {
         );
 
         gl::BindVertexArray(0);
+    }
+
+    pub fn randomize_height(&mut self) {
+        warn!("Randomizing height");
+        let noise = PerlinNoise::new();
+
+        let nm1 = NoiseMap::new(noise)
+            .set(Seed::of("H?"))
+            .set(Step::of(0.005, 0.005));
+
+        let nm2 = NoiseMap::new(noise)
+            .set(Seed::of("dasdasdada"))
+            .set(Step::of(0.05, 0.05));
+
+        let nm = Box::new(nm1 + nm2 * 4);
+        let chunk = nm.generate_sized_chunk(Size::of(100, 100), 0, 0);
+        let mut idx = 0;
+        for row in chunk {
+            for number in row {
+                self.vertices[idx].position.y += number as f32 / 10.;
+                idx += 1;
+            }
+        }
     }
 }
 

@@ -1,4 +1,7 @@
 use cg::shader::Shader;
+use game::flight::aircraft::AircraftKind::*;
+use game::player::Player;
+use game::terrain::Terrain;
 use glfw::Context;
 extern crate glfw;
 use crate::game::game::Game;

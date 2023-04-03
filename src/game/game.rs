@@ -1,18 +1,19 @@
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
-use log::{info, warn};
+use log::info;
+use rayon::ThreadPoolBuilder;
 use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
+use crate::cg::camera::Movement;
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
-use crate::cg::{camera::Movement, terrain::Terrain};
 use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
 use std::ffi::CStr;
 
-use super::id_gen::{IDGenerator, IDKind};
-use super::{enemy::Enemy, flight::aircraft::AircraftKind::*, missile::Missile, player::Player};
+use super::terrain::Terrain;
+use super::{enemy::Enemy, missile::Missile, player::Player};
 
 const TARGET_ENEMIES: usize = 4;
 
@@ -66,11 +67,20 @@ impl<'a> Game<'a> {
             gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
 
+        ThreadPoolBuilder::new()
+            .num_threads(256)
+            .build_global()
+            .expect("Configure global rayon threadpool");
+
+        let mut terrain = Terrain::default();
+        terrain.generate();
+        //terrain.template_model.randomize_height();
+        //terrain.template_model.reload_mesh();
         Game {
             player: Player::default(),
             enemies: vec![],
             missiles: vec![],
-            terrain: Terrain::default(),
+            terrain,
             skybox: Model::new("resources/objects/skybox/skybox.obj"),
             id_generator: IDGenerator::default(),
             glfw,
@@ -145,9 +155,10 @@ impl<'a> Game<'a> {
         //self.player.draw(&shader);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
-        model_matrix = model_matrix * Matrix4::from_scale(10000.0);
+        model_matrix = model_matrix * Matrix4::from_scale(15.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
-        self.terrain.draw(&shader);
+        let request = vec![(1,1), (2,2), (3,3)];
+        self.terrain.draw(&shader, &request);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(10000.0);
