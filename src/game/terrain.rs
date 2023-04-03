@@ -23,7 +23,7 @@ const CHUNKS_Y: i64 = 16;
 const CHUNK_X_RANGE: Range<i64> = -CHUNKS_X..CHUNKS_X + 1;
 const CHUNK_Y_RANGE: Range<i64> = -CHUNKS_X..CHUNKS_X + 1;
 
-use super::chunk::{self, Chunk};
+use crate::game::chunk::Chunk;
 
 pub const CHUNK_SIZE: i64 = 100;
 

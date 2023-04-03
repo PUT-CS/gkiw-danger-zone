@@ -5,3 +5,5 @@ pub mod terrain;
 pub mod chunk;
 pub mod flight;
 pub mod player;
+pub mod id_gen;
+pub mod drawable;

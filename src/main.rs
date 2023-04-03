@@ -1,8 +1,9 @@
 use cg::shader::Shader;
-use game::flight::aircraft::AircraftKind::*;
+use crate::game::flight::aircraft::AircraftKind::Mig21;
 use game::player::Player;
 use game::terrain::Terrain;
 use glfw::Context;
+use log::warn;
 extern crate glfw;
 use crate::game::game::Game;
 
@@ -10,26 +11,8 @@ const SCR_WIDTH: u32 = 1920;
 const SCR_HEIGHT: u32 = 1080;
 
 mod macros;
-mod cg {
-    pub mod camera;
-    pub mod model;
-    pub mod shader;
-    pub mod terrain;
-    pub mod transformation;
-}
-mod game {
-    pub mod enemy;
-    pub mod game;
-    pub mod id_gen;
-    pub mod missile;
-    pub mod flight {
-        pub mod aircraft;
-        pub mod control_surfaces;
-        pub mod spec;
-        pub mod steerable;
-    }
-    pub mod player;
-}
+mod cg;
+mod game;
 
 fn main() {
     let mut first_mouse = true;

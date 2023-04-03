@@ -1,4 +1,5 @@
 use std::{time::Duration, fmt::Debug};
+use crate::game::drawable::Drawable;
 
 use log::info;
 use worldgen::noisemap::{NoiseMapGeneratorBase, Size};

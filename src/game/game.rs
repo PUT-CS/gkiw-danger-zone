@@ -2,6 +2,7 @@ use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use log::info;
+use log::warn;
 use rayon::ThreadPoolBuilder;
 use std::sync::mpsc::Receiver;
 extern crate glfw;
@@ -10,7 +11,10 @@ use crate::cg::camera::Movement;
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
 use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
+use crate::game::flight::aircraft::AircraftKind::Mig21;
+use crate::game::id_gen::{IDGenerator,IDKind};
 use std::ffi::CStr;
+use crate::game::drawable::Drawable;
 
 use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};

@@ -1,5 +1,6 @@
 use super::flight::aircraft::{Aircraft, AircraftKind};
 use crate::cg::shader::Shader;
+use crate::game::drawable::Drawable;
 
 /// Struct representing an enemy
 #[derive(Debug)]
