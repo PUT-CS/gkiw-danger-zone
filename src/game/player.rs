@@ -47,6 +47,9 @@ impl Player {
     pub fn aircraft_mut(&mut self) -> &mut Aircraft {
         &mut self.aircraft
     }
+    pub fn cockpit_mut(&mut self) -> &mut Model {
+        &mut self.cockpit
+    }
     pub fn camera_mut(&mut self) -> &mut Camera {
         &mut self.camera
     }

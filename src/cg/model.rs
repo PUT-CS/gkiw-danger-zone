@@ -1,4 +1,7 @@
+use super::texture::Texture;
+use super::vertex::Vertex;
 use crate::cg::shader::Shader;
+use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
 use cgmath::prelude::*;
 use cgmath::Deg;
@@ -8,6 +11,7 @@ use gl;
 use image;
 use image::DynamicImage::*;
 use image::GenericImage;
+use log::error;
 use log::warn;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
@@ -15,13 +19,9 @@ use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
 use tobj;
-use log::error;
 use worldgen::noise::perlin::PerlinNoise;
 use worldgen::noisemap::NoiseMapGeneratorBase;
 use worldgen::noisemap::{NoiseMap, NoiseMapGenerator, Seed, Size, Step};
-use crate::game::drawable::Drawable;
-use super::texture::Texture;
-use super::vertex::Vertex;
 
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
@@ -88,12 +88,13 @@ impl Steerable for Model {
 
 impl Drawable for Model {
     unsafe fn draw(&self, shader: &Shader) {
-
         if self.directory == "" {
-            error!("Attempt to draw a model that was not loaded. Use the `load_model` method first.");
+            error!(
+                "Attempt to draw a model that was not loaded. Use the `load_model` method first."
+            );
             panic!("Attempt to draw a model that was not loaded");
         }
-        
+
         // bind appropriate textures
         let mut diffuse_nr = 0;
         let mut specular_nr = 0;
@@ -144,7 +145,6 @@ impl Drawable for Model {
         // always good practice to set everything back to defaults once configured.
         gl::ActiveTexture(gl::TEXTURE0);
     }
-
 }
 
 impl Model {
@@ -158,20 +158,32 @@ impl Model {
         model
     }
 
-    pub fn scale(&mut self, scale: f32) {
+    pub fn scale(&mut self, scale: f32) -> &mut Self {
         self.model_matrix = self.model_matrix * Matrix4::from_scale(scale);
+        self
+    }
+
+    pub fn translate(&mut self, t: Vector3) -> &mut Self {
+        self.model_matrix = self.model_matrix * Matrix4::from_translation(t);
+        self
+    }
+
+    pub fn rotate(&mut self, a: Vector3, d: Deg<f32>) -> &mut Self {
+        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(a, d);
+        self
     }
 
     pub fn model_matrix(&self) -> Matrix4 {
         self.model_matrix
     }
     pub unsafe fn draw(&self, shader: &Shader) {
-	
         if self.directory == "" {
-            error!("Attempt to draw a model that was not loaded. Use the `load_model` method first.");
+            error!(
+                "Attempt to draw a model that was not loaded. Use the `load_model` method first."
+            );
             panic!("Attempt to draw a model that was not loaded");
         }
-        
+
         // bind appropriate textures
         let mut diffuse_nr = 0;
         let mut specular_nr = 0;
@@ -209,6 +221,7 @@ impl Model {
             gl::BindTexture(gl::TEXTURE_2D, texture.id);
         }
 
+        //shader.set_mat4(c_str!("model"), &self.model_matrix);
         // draw mesh
         gl::BindVertexArray(self.vao);
         gl::DrawElements(
@@ -229,15 +242,17 @@ impl Model {
         T: ToString + AsRef<OsStr>,
     {
         let path = Path::new(&path);
-
+        
         self.directory = path
             .parent()
             .unwrap_or_else(|| Path::new(""))
             .to_str()
             .unwrap()
             .into();
+        
         let obj = tobj::load_obj(path);
         let (models, materials) = obj.unwrap();
+        
         for model in models {
             let mesh = &model.mesh;
             let num_vertices = mesh.positions.len() / 3;

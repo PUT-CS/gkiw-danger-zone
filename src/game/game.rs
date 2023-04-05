@@ -12,9 +12,9 @@ use crate::cg::model::Model;
 use crate::cg::shader::Shader;
 use crate::game::flight::aircraft::AircraftKind::Mig21;
 use crate::game::id_gen::{IDGenerator, IDKind};
-use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
+use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3};
 use std::ffi::CStr;
-
+use crate::game::drawable::Drawable;
 use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};
 
@@ -76,15 +76,26 @@ impl<'a> Game<'a> {
             .expect("Configure global rayon threadpool");
 
         let mut terrain = Terrain::default();
-        terrain.generate();
-        //terrain.template_model.randomize_height();
-        //terrain.template_model.reload_mesh();
+        terrain.model.scale(0.005);
+
+        let mut player = Player::default();
+        player.aircraft_mut().model_mut().scale(15.);
+
+        player
+            .cockpit_mut()
+            .translate(vec3(0.0, -0.3, 0.0))
+            .scale(0.5)
+            .rotate(Vector3::unit_y(), Deg(-90.));
+
+        let mut skybox = Model::new("resources/objects/skybox/skybox.obj");
+        skybox.scale(1000.);
+
         Game {
-            player: Player::default(),
-            enemies: vec![],
+            player,
+            enemies: Vec::with_capacity(TARGET_ENEMIES),
             missiles: vec![],
             terrain,
-            skybox: Model::new("resources/objects/skybox/skybox.obj"),
+            skybox,
             id_generator: IDGenerator::default(),
             glfw,
             window,
@@ -109,11 +120,6 @@ impl<'a> Game<'a> {
             .map(|_| Enemy::new(Mig21, self.id_generator.get_new_id_of(IDKind::Enemy)))
             .collect();
         self.enemies.append(&mut new_enemies);
-        // if self.targeted_enemies().is_some() {
-        //     println!("LOCK");
-        // } else {
-        //     println!("");
-        // }
     }
 
     /// Check if the player aims their nose at an enemy, triggering a missile lock
@@ -150,34 +156,21 @@ impl<'a> Game<'a> {
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
-        let mut model_matrix =
-            self.player.aircraft().model().model_matrix() * Matrix4::from_scale(10.0);
-        //model_matrix = model_matrix * Matrix4::from_axis_angle(Vector3::unit_y(), Deg(0.));
-        //model_matrix = model_matrix * Matrix4::from_translation(vec3(0.0, 0., 4.0));
-        //model_matrix = model_matrix * Matrix4::from_translation(vec3(0.0, 0., 0.0));
-        model_matrix = model_matrix * Matrix4::from_angle_y(Deg(180.));
+        // Drawing game objects starts here
+        let mut model_matrix = self.terrain.model.model_matrix();
+        //let mut model_matrix = Matrix4::identity();
         shader.set_mat4(c_str!("model"), &model_matrix);
-        //self.player.draw(&shader);
-
-        let mut model_matrix = Matrix4::<f32>::from_value(1.0);
-        model_matrix = model_matrix * Matrix4::from_scale(15.0);
-        shader.set_mat4(c_str!("model"), &model_matrix);
-        let request = vec![(1, 1), (2, 2), (3, 3)];
-        self.terrain.draw(&shader, &request);
-
-        let mut model_matrix = Matrix4::<f32>::from_value(1.0);
-        model_matrix = model_matrix * Matrix4::from_scale(10000.0);
+        self.terrain.draw(&shader);
+        
+        model_matrix = self.skybox.model_matrix();
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
 
         model_matrix = self.enemies[0].aircraft_mut().model().model_matrix();
         shader.set_mat4(c_str!("model"), &model_matrix);
-        self.enemies[0].draw(shader);
+        self.enemies[0].draw(&shader);
 
-        let mut model_matrix = self.player.cockpit.model_matrix()
-            * Matrix4::from_translation(vec3(0.0, -0.3, 0.0))
-            * Matrix4::from_scale(0.5)
-            * Matrix4::from_angle_y(Deg(-90.));
+        model_matrix = self.player.cockpit.model_matrix();
         let time = self.glfw.get_time() as f32 * 2.0;
         model_matrix = model_matrix
             * Matrix4::from_translation(vec3(
@@ -186,7 +179,7 @@ impl<'a> Game<'a> {
                 time.cos() * 0.01,
             ));
         shader.set_mat4(c_str!("model"), &model_matrix);
-        shader.set_mat4(c_str!("view"), &Matrix4::from_value(1.0));
+        shader.set_mat4(c_str!("view"), &Matrix4::identity());
         self.player.cockpit.draw(&shader);
     }
 
