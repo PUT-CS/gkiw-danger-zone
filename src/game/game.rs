@@ -2,9 +2,11 @@ use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
+use lazy_static::__Deref;
 use log::info;
 use log::warn;
 use rayon::ThreadPoolBuilder;
+use std::cell::RefCell;
 use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
@@ -17,15 +19,16 @@ use crate::game::id_gen::{IDGenerator, IDKind};
 use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
 use std::ffi::CStr;
 
+use super::missile::EnemyID;
 use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};
 
 const TARGET_ENEMIES: usize = 4;
 
-pub struct Game<'a> {
+pub struct Game {
     player: Player,
     enemies: Vec<Enemy>,
-    missiles: Vec<Missile<'a>>,
+    missiles: Vec<Missile>,
     terrain: Terrain,
     skybox: Model,
     id_generator: IDGenerator,
@@ -34,7 +37,7 @@ pub struct Game<'a> {
     pub events: Receiver<(f64, WindowEvent)>,
 }
 
-impl<'a> Game<'a> {
+impl Game {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         log4rs::init_file("log_config.yaml", Default::default()).unwrap();
@@ -120,7 +123,7 @@ impl<'a> Game<'a> {
 
     /// Check if the player aims their nose at an enemy, triggering a missile lock
     /// countdown on one of them (lock not implemented yet)
-    pub fn targeted_enemy(&self) -> Option<&Enemy> {
+    pub fn targeted_enemy_id(&self) -> Option<EnemyID> {
         let player_front = self.player.camera().front;
         let player_position = self.player.camera().position;
 
@@ -134,12 +137,10 @@ impl<'a> Game<'a> {
                 (deg, enemy)
             })
             .collect_vec();
+        if targeted.is_empty() {return None;}
         targeted.sort_by(|t1, t2| t1.0.partial_cmp(&t2.0).unwrap());
-        if let Some(tuple) = targeted.get(0) {
-            return Some(tuple.1);
-        } else {
-            return None;
-        }
+        
+        Some(*targeted[0].1.id())
     }
 
     pub unsafe fn draw(&mut self, shader: &Shader) {
@@ -282,11 +283,10 @@ impl<'a> Game<'a> {
             Key::LeftControl,
             self.player.process_key(Movement::ThrottleDown, delta_time)
         );
-	let target = self.targeted_enemy();
 	key_pressed!(
 	    self.window,
 	    Key::Space,
-	    self.launch_missile(target)
+	    self.launch_missile()
 	)
     }
 
@@ -294,15 +294,19 @@ impl<'a> Game<'a> {
         &mut self.player
     }
 
-    pub fn set_player(&mut self, p: Player) {
-        self.player = p;
-    }
-    pub fn launch_missile(&mut self, target: Option<&'a Enemy>) {
+    pub fn launch_missile(&mut self) {
+        let target = self.targeted_enemy_id();
 	self.spawn_missile(target);
     }
     
-    pub fn spawn_missile(&mut self, enemy: Option<&'a Enemy>) {
+    /// Give the missiles a reference to the Enemy they are currently
+    /// targeting so they can mutate their state accordingly
+    pub fn update_missile(&mut self) {
+        
+    }
+    
+    /// Create a new missile and add it to the self.missiles vector
+    pub fn spawn_missile(&mut self, enemy: Option<EnemyID>) {
         self.missiles.push(Missile::new(enemy));
-	
     }
 }
