@@ -1,30 +1,34 @@
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
+use itertools::Itertools;
+use lazy_static::__Deref;
 use log::info;
 use log::warn;
 use rayon::ThreadPoolBuilder;
+use std::cell::RefCell;
 use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
 use crate::cg::camera::Movement;
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
-use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
-use crate::game::flight::aircraft::AircraftKind::Mig21;
-use crate::game::id_gen::{IDGenerator,IDKind};
-use std::ffi::CStr;
 use crate::game::drawable::Drawable;
+use crate::game::flight::aircraft::AircraftKind::Mig21;
+use crate::game::id_gen::{IDGenerator, IDKind};
+use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
+use std::ffi::CStr;
 
+use super::missile::EnemyID;
 use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};
 
 const TARGET_ENEMIES: usize = 4;
 
-pub struct Game<'a> {
+pub struct Game {
     player: Player,
     enemies: Vec<Enemy>,
-    missiles: Vec<Missile<'a>>,
+    missiles: Vec<Missile>,
     terrain: Terrain,
     skybox: Model,
     id_generator: IDGenerator,
@@ -33,7 +37,7 @@ pub struct Game<'a> {
     pub events: Receiver<(f64, WindowEvent)>,
 }
 
-impl<'a> Game<'a> {
+impl Game {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         log4rs::init_file("log_config.yaml", Default::default()).unwrap();
@@ -106,7 +110,9 @@ impl<'a> Game<'a> {
         if diff > 0 {
             warn!("Respawning {diff} enemies");
         }
-        let mut new_enemies: Vec<Enemy> = (0..diff).map(|_| Enemy::new(Mig21, self.id_generator.get_new_id_of(IDKind::Enemy))).collect();
+        let mut new_enemies: Vec<Enemy> = (0..diff)
+            .map(|_| Enemy::new(Mig21, self.id_generator.get_new_id_of(IDKind::Enemy)))
+            .collect();
         self.enemies.append(&mut new_enemies);
         // if self.targeted_enemies().is_some() {
         //     println!("LOCK");
@@ -117,26 +123,24 @@ impl<'a> Game<'a> {
 
     /// Check if the player aims their nose at an enemy, triggering a missile lock
     /// countdown on one of them (lock not implemented yet)
-    pub fn targeted_enemies(&self) -> Option<Vec<Player>> {
+    pub fn targeted_enemy_id(&self) -> Option<EnemyID> {
         let player_front = self.player.camera().front;
         let player_position = self.player.camera().position;
 
-        // temporary. self.enemies here later
-        let enemies = vec![self.player.clone()];
-
-        let targeted: Vec<Player> = enemies
+        let mut targeted = self
+            .enemies
             .iter()
-            .filter(|enemy| {
+            .map(|enemy| {
                 let pos = enemy.aircraft().model().position;
                 let direction = (pos - player_position).normalize();
                 let deg = direction.angle(player_front).0.to_degrees();
-
-                deg < 5.
+                (deg, enemy)
             })
-            .map(|p| p.to_owned())
-            .collect();
-
-        (!targeted.is_empty()).then(|| targeted)
+            .collect_vec();
+        if targeted.is_empty() {return None;}
+        targeted.sort_by(|t1, t2| t1.0.partial_cmp(&t2.0).unwrap());
+        
+        Some(*targeted[0].1.id())
     }
 
     pub unsafe fn draw(&mut self, shader: &Shader) {
@@ -161,7 +165,7 @@ impl<'a> Game<'a> {
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
         model_matrix = model_matrix * Matrix4::from_scale(15.0);
         shader.set_mat4(c_str!("model"), &model_matrix);
-        let request = vec![(1,1), (2,2), (3,3)];
+        let request = vec![(1, 1), (2, 2), (3, 3)];
         self.terrain.draw(&shader, &request);
 
         let mut model_matrix = Matrix4::<f32>::from_value(1.0);
@@ -187,8 +191,6 @@ impl<'a> Game<'a> {
         shader.set_mat4(c_str!("model"), &model_matrix);
         shader.set_mat4(c_str!("view"), &Matrix4::from_value(1.0));
         self.player.cockpit.draw(&shader);
-
-
     }
 
     pub fn process_events(
@@ -281,13 +283,30 @@ impl<'a> Game<'a> {
             Key::LeftControl,
             self.player.process_key(Movement::ThrottleDown, delta_time)
         );
+	key_pressed!(
+	    self.window,
+	    Key::Space,
+	    self.launch_missile()
+	)
     }
 
     pub fn player_mut(&mut self) -> &mut Player {
         &mut self.player
     }
 
-    pub fn set_player(&mut self, p: Player) {
-        self.player = p;
+    pub fn launch_missile(&mut self) {
+        let target = self.targeted_enemy_id();
+	self.spawn_missile(target);
+    }
+    
+    /// Give the missiles a reference to the Enemy they are currently
+    /// targeting so they can mutate their state accordingly
+    pub fn update_missile(&mut self) {
+        
+    }
+    
+    /// Create a new missile and add it to the self.missiles vector
+    pub fn spawn_missile(&mut self, enemy: Option<EnemyID>) {
+        self.missiles.push(Missile::new(enemy));
     }
 }
