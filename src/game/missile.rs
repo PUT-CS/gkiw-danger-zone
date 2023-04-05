@@ -21,9 +21,9 @@ pub struct Missile<'a> {
 }
 
 impl<'a> Missile<'a> {
-    pub fn new(target: &'a Enemy) -> Self {
+    pub fn new(target:Option<&'a Enemy>) -> Self {
         Missile {
-            target: Some(target),
+            target: target,
             model: Model::new("resources/objects/cockpit/cockpit.obj"),
             termination_timer: None
         }
