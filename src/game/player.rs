@@ -5,6 +5,7 @@ use crate::cg::{
     shader::Shader,
 };
 use crate::game::flight::steerable::Steerable;
+use crate::game::drawable::Drawable;
 
 #[derive(Clone, Debug)]
 pub struct Player {
