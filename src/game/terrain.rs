@@ -1,8 +1,8 @@
+use super::drawable::Drawable;
 use crate::cg::{model::Model, shader::Shader};
 use lazy_static::lazy_static;
 use log::{info, warn};
 use std::collections::HashMap;
-use super::drawable::Drawable;
 
 lazy_static! {
     static ref TERRAINS: HashMap<TerrainType, &'static str> = HashMap::from([(

@@ -6,9 +6,9 @@ use crate::game::game::Game;
 const SCR_WIDTH: u32 = 1000;
 const SCR_HEIGHT: u32 = 1000;
 
-mod macros;
 mod cg;
 mod game;
+mod macros;
 
 fn main() {
     let mut first_mouse = true;

@@ -1,8 +1,5 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
-use crate::cg::{
-    camera::ControlSurfaces,
-    model::Model,
-};
+use crate::cg::{camera::ControlSurfaces, model::Model};
 use lazy_static::lazy_static;
 use log::info;
 use std::collections::HashMap;
@@ -88,18 +85,21 @@ impl Aircraft {
 impl Steerable for Aircraft {
     /// Mutate the pitch flaps bias
     fn pitch(&mut self, amount: f32) {
-        *self.controls_mut().pitch_bias_mut() =
-            (self.controls().pitch_bias() + self.spec().pitch_rate() * amount.signum()).clamp(-MAX_PITCH_BIAS, MAX_PITCH_BIAS);
+        *self.controls_mut().pitch_bias_mut() = (self.controls().pitch_bias()
+            + self.spec().pitch_rate() * amount.signum())
+        .clamp(-MAX_PITCH_BIAS, MAX_PITCH_BIAS);
     }
     /// Mutate the yaw flaps bias
     fn yaw(&mut self, amount: f32) {
-        *self.controls_mut().yaw_bias_mut() =
-            (self.controls().yaw_bias() + self.spec().yaw_rate() * amount.signum()).clamp(-MAX_YAW_BIAS, MAX_YAW_BIAS);
+        *self.controls_mut().yaw_bias_mut() = (self.controls().yaw_bias()
+            + self.spec().yaw_rate() * amount.signum())
+        .clamp(-MAX_YAW_BIAS, MAX_YAW_BIAS);
     }
     /// Mutate the roll flaps bias
     fn roll(&mut self, amount: f32) {
-        *self.controls_mut().roll_bias_mut() =
-            (self.controls().roll_bias() + self.spec().roll_rate() * amount.signum()).clamp(-MAX_ROLL_BIAS, MAX_ROLL_BIAS);
+        *self.controls_mut().roll_bias_mut() = (self.controls().roll_bias()
+            + self.spec().roll_rate() * amount.signum())
+        .clamp(-MAX_ROLL_BIAS, MAX_ROLL_BIAS);
     }
     /// Mutate the throttle, adding 0.1 (subject to change)
     fn forward(&mut self, amount: f32) {

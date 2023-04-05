@@ -22,11 +22,11 @@ impl IDGenerator {
         match self.ids.get(&kind).cloned() {
             Some(id) => {
                 self.ids.insert(kind, id + 1);
-		    id + 1
+                id + 1
             }
             None => {
                 self.ids.insert(kind, 0);
-		0
+                0
             }
         }
     }

@@ -152,9 +152,7 @@ impl Game {
         if targeted.is_empty() {
             return None;
         }
-        targeted.sort_by(|t1, t2| {
-            t2.1.0.partial_cmp(&t2.1.0).unwrap()
-        });
+        targeted.sort_by(|t1, t2| t2.1 .0.partial_cmp(&t2.1 .0).unwrap());
         Some(*targeted[0].0)
     }
 
@@ -177,7 +175,13 @@ impl Game {
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
 
-        model_matrix = self.enemies.get_mut(&0).unwrap().aircraft_mut().model().model_matrix();
+        model_matrix = self
+            .enemies
+            .get_mut(&0)
+            .unwrap()
+            .aircraft_mut()
+            .model()
+            .model_matrix();
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.enemies.get(&0).unwrap().draw(&shader);
 

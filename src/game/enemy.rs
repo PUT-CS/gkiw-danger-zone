@@ -1,6 +1,6 @@
 use super::flight::aircraft::{Aircraft, AircraftKind};
-use crate::game::drawable::Drawable;
 use crate::cg::shader::Shader;
+use crate::game::drawable::Drawable;
 
 /// Struct representing an enemy
 #[derive(Debug)]
@@ -13,7 +13,6 @@ impl Drawable for Enemy {
     unsafe fn draw(&self, shader: &Shader) {
         self.aircraft.model().draw(shader);
     }
-    
 }
 
 impl Enemy {

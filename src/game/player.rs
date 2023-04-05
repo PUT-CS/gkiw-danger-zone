@@ -4,8 +4,8 @@ use crate::cg::{
     model::Model,
     shader::Shader,
 };
-use crate::game::flight::steerable::Steerable;
 use crate::game::drawable::Drawable;
+use crate::game::flight::steerable::Steerable;
 
 #[derive(Clone, Debug)]
 pub struct Player {
@@ -36,7 +36,7 @@ impl Default for Player {
 impl Drawable for Player {
     unsafe fn draw(&self, shader: &Shader) {
         self.aircraft.model().draw(shader);
-    } 
+    }
 }
 
 impl Player {
@@ -61,12 +61,9 @@ impl Player {
     /// Modify the player's position and camera based on the Controls
     pub fn apply_controls(&mut self, delta_time: f32) {
         let controls = self.aircraft.controls().clone();
-        self.camera_mut()
-            .pitch(controls.pitch_bias() * delta_time);
-        self.camera_mut()
-            .yaw(controls.yaw_bias() * delta_time);
-        self.camera_mut()
-            .roll(controls.roll_bias() * delta_time);
+        self.camera_mut().pitch(controls.pitch_bias() * delta_time);
+        self.camera_mut().yaw(controls.yaw_bias() * delta_time);
+        self.camera_mut().roll(controls.roll_bias() * delta_time);
         self.camera_mut().forward(controls.throttle());
     }
 

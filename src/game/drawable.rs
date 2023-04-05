@@ -1,5 +1,5 @@
 use crate::Shader;
 
-pub trait Drawable{
+pub trait Drawable {
     unsafe fn draw(&self, shader: &Shader);
 }

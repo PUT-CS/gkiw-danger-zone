@@ -243,17 +243,17 @@ impl Model {
         T: ToString + AsRef<OsStr>,
     {
         let path = Path::new(&path);
-        
+
         self.directory = path
             .parent()
             .unwrap_or_else(|| Path::new(""))
             .to_str()
             .unwrap()
             .into();
-        
+
         let obj = tobj::load_obj(path);
         let (models, materials) = obj.unwrap();
-        
+
         for model in models {
             let mesh = &model.mesh;
             let num_vertices = mesh.positions.len() / 3;
