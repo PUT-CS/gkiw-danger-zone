@@ -1,7 +1,6 @@
 use crate::cg::camera::ControlSurfaces;
 
 const DECAY: f32 = 0.0004;
-pub const MAX_BIAS: f32 = 0.5;
 
 #[derive(Clone, Debug)]
 /// Struct describing the mechanical state of the control parameters in the aircraft.
@@ -20,7 +19,7 @@ impl Default for Controls {
             pitch_bias: 0.,
             yaw_bias: 0.,
             roll_bias: 0.,
-            throttle: 0.1,
+            throttle: 0.05,
             decay: [true, true, true],
         }
     }

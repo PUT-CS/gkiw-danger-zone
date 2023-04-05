@@ -1,14 +1,10 @@
 use cg::shader::Shader;
-use crate::game::flight::aircraft::AircraftKind::Mig21;
-use game::player::Player;
-use game::terrain::Terrain;
 use glfw::Context;
-use log::warn;
 extern crate glfw;
 use crate::game::game::Game;
 
-const SCR_WIDTH: u32 = 1920;
-const SCR_HEIGHT: u32 = 1080;
+const SCR_WIDTH: u32 = 1000;
+const SCR_HEIGHT: u32 = 1000;
 
 mod macros;
 mod cg;

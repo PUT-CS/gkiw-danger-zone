@@ -1,17 +1,17 @@
+use super::texture::Texture;
+use super::vertex::Vertex;
 use crate::cg::shader::Shader;
+use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
 use cgmath::prelude::*;
 use cgmath::Deg;
 use cgmath::Quaternion;
-use cgmath::Vector2;
 use cgmath::{vec2, vec3};
 use gl;
-use gl::DEBUG_CALLBACK_FUNCTION;
 use image;
 use image::DynamicImage::*;
 use image::GenericImage;
-use itertools::Position;
-use log::info;
+use log::error;
 use log::warn;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
@@ -19,53 +19,9 @@ use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
 use tobj;
-use log::error;
-use worldgen::constraint;
 use worldgen::noise::perlin::PerlinNoise;
 use worldgen::noisemap::NoiseMapGeneratorBase;
 use worldgen::noisemap::{NoiseMap, NoiseMapGenerator, Seed, Size, Step};
-use worldgen::world::tile::{Constraint, ConstraintType};
-use worldgen::world::{Tile, World};
-use crate::game::drawable::Drawable;
-
-#[repr(C)]
-#[derive(Debug, Clone)]
-pub struct Vertex {
-    pub position: Vector3,
-    pub normal: Vector3,
-    pub tex_coords: Vector2<f32>,
-    pub tangent: Vector3,
-    pub bitangent: Vector3,
-}
-
-impl Default for Vertex {
-    fn default() -> Self {
-        Vertex {
-            position: Vector3::zero(),
-            normal: Vector3::zero(),
-            tex_coords: Vector2::zero(),
-            tangent: Vector3::zero(),
-            bitangent: Vector3::zero(),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Texture {
-    pub id: u32,
-    pub type_: String,
-    pub path: String,
-}
-
-impl Default for Texture {
-    fn default() -> Self {
-        Texture {
-            id: 0,
-            type_: "none".to_string(),
-            path: "none".to_string(),
-        }
-    }
-}
 
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
@@ -122,8 +78,6 @@ impl Steerable for Model {
     fn roll(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
-        //self.up = (rotation * self.up).normalize();
-        //self.right = (rotation * self.right).normalize();
     }
 
     fn forward(&mut self, throttle: f32) {
@@ -134,12 +88,13 @@ impl Steerable for Model {
 
 impl Drawable for Model {
     unsafe fn draw(&self, shader: &Shader) {
-
         if self.directory == "" {
-            error!("Attempt to draw a model that was not loaded. Use the `load_model` method first.");
+            error!(
+                "Attempt to draw a model that was not loaded. Use the `load_model` method first."
+            );
             panic!("Attempt to draw a model that was not loaded");
         }
-        
+
         // bind appropriate textures
         let mut diffuse_nr = 0;
         let mut specular_nr = 0;
@@ -190,7 +145,6 @@ impl Drawable for Model {
         // always good practice to set everything back to defaults once configured.
         gl::ActiveTexture(gl::TEXTURE0);
     }
-
 }
 
 impl Model {
@@ -204,8 +158,83 @@ impl Model {
         model
     }
 
+    pub fn scale(&mut self, scale: f32) -> &mut Self {
+        self.model_matrix = self.model_matrix * Matrix4::from_scale(scale);
+        self
+    }
+
+    pub fn translate(&mut self, t: Vector3) -> &mut Self {
+        self.model_matrix = self.model_matrix * Matrix4::from_translation(t);
+        self
+    }
+
+    pub fn rotate(&mut self, a: Vector3, d: Deg<f32>) -> &mut Self {
+        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(a, d);
+        self
+    }
+
     pub fn model_matrix(&self) -> Matrix4 {
         self.model_matrix
+    }
+
+    pub unsafe fn draw(&self, shader: &Shader) {
+        if self.directory == "" {
+            error!(
+                "Attempt to draw a model that was not loaded. Use the `load_model` method first."
+            );
+            panic!("Attempt to draw a model that was not loaded");
+        }
+
+        // bind appropriate textures
+        let mut diffuse_nr = 0;
+        let mut specular_nr = 0;
+        let mut normal_nr = 0;
+        let mut height_nr = 0;
+        for (i, texture) in self.textures.iter().enumerate() {
+            gl::ActiveTexture(gl::TEXTURE0 + i as u32);
+            let name = &texture.type_;
+            let number = match name.as_str() {
+                "texture_diffuse" => {
+                    diffuse_nr += 1;
+                    diffuse_nr
+                }
+                "texture_specular" => {
+                    specular_nr += 1;
+                    specular_nr
+                }
+                "texture_normal" => {
+                    normal_nr += 1;
+                    normal_nr
+                }
+                "texture_height" => {
+                    height_nr += 1;
+                    height_nr
+                }
+                _ => panic!("unknown texture type"),
+            };
+            // set the sampler to the correct texture unit
+            let sampler = CString::new(format!("{}{}", name, number)).unwrap();
+            gl::Uniform1i(
+                gl::GetUniformLocation(shader.id, sampler.as_ptr()),
+                i as i32,
+            );
+            // bind the texture
+            gl::BindTexture(gl::TEXTURE_2D, texture.id);
+        }
+
+        //shader.set_mat4(c_str!("model"), &self.model_matrix);
+        // draw mesh
+        gl::BindVertexArray(self.vao);
+        gl::DrawElements(
+            gl::TRIANGLES,
+            self.indices.len() as i32,
+            gl::UNSIGNED_INT,
+            ptr::null(),
+        );
+        gl::BindVertexArray(0);
+
+        // always good practice to set everything back to defaults once configured.
+        gl::ActiveTexture(gl::TEXTURE0);
     }
 
     // load a model from file and stores the resulting meshes in the meshes vector.
@@ -214,15 +243,17 @@ impl Model {
         T: ToString + AsRef<OsStr>,
     {
         let path = Path::new(&path);
-
+        
         self.directory = path
             .parent()
             .unwrap_or_else(|| Path::new(""))
             .to_str()
             .unwrap()
             .into();
+        
         let obj = tobj::load_obj(path);
         let (models, materials) = obj.unwrap();
+        
         for model in models {
             let mesh = &model.mesh;
             let num_vertices = mesh.positions.len() / 3;

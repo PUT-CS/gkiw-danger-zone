@@ -101,7 +101,7 @@ impl Steerable for Camera {
         self.update_view_matrix();
     }
     fn forward(&mut self, throttle: f32) {
-        self.position += self.front * throttle;
+        self.position += self.front * throttle / 100.;
         self.update_view_matrix();
     }
 }

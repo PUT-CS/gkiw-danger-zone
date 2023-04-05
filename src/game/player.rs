@@ -1,5 +1,4 @@
 use super::flight::aircraft::{Aircraft, AircraftKind};
-use crate::game::drawable::Drawable;
 use crate::cg::{
     camera::{Camera, ControlSurfaces, Movement, Movement::*},
     model::Model,
@@ -51,6 +50,9 @@ impl Player {
     pub fn aircraft_mut(&mut self) -> &mut Aircraft {
         &mut self.aircraft
     }
+    pub fn cockpit_mut(&mut self) -> &mut Model {
+        &mut self.cockpit
+    }
     pub fn camera_mut(&mut self) -> &mut Camera {
         &mut self.camera
     }
@@ -64,7 +66,7 @@ impl Player {
             .yaw(controls.yaw_bias() * delta_time);
         self.camera_mut()
             .roll(controls.roll_bias() * delta_time);
-        //self.camera_mut().forward(controls.throttle());
+        self.camera_mut().forward(controls.throttle());
     }
 
     /// Handle key events meant for player controls.
