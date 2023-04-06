@@ -2,32 +2,30 @@ use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
-use log::info;
-use log::warn;
+use log::{info, warn};
 use rayon::ThreadPoolBuilder;
-use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
-use crate::key_pressed;
 use super::enemies::Enemies;
 use super::missile::EnemyID;
 use super::terrain::Terrain;
-use super::{enemy::Enemy, missile::Missile, player::Player};
+use super::{missile::Missile, player::Player};
+use crate::c_str;
 use crate::cg::camera::Movement;
 use crate::cg::model::Model;
 use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
-use crate::game::flight::aircraft::AircraftKind::Mig21;
-use std::sync::Mutex;
-use crate::game::id_gen::{IDGenerator, IDKind};
+use crate::game::id_gen::IDGenerator;
+use crate::key_pressed;
 use cgmath::Vector3;
 use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
-use std::ffi::CStr;
-use crate::c_str;
 use lazy_static::lazy_static;
+use std::ffi::CStr;
+use std::sync::Mutex;
 
 pub const TARGET_ENEMIES: usize = 4;
+pub const MISSILE_COOLDOWN: f64 = 3.0;
 
 lazy_static! {
     pub static ref ID_GENERATOR: Mutex<IDGenerator> = Mutex::new(IDGenerator::default());
@@ -39,6 +37,7 @@ pub struct Game {
     missiles: Vec<Missile>,
     terrain: Terrain,
     skybox: Model,
+    last_launch_time: f64,
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
@@ -110,6 +109,7 @@ impl Game {
             missiles: vec![],
             terrain,
             skybox,
+            last_launch_time: glfw.get_time() - MISSILE_COOLDOWN,
             glfw,
             window,
             events,
@@ -145,6 +145,7 @@ impl Game {
                 let deg = direction.angle(player_front).0.to_degrees();
                 (tuple.0, (deg, enemy))
             })
+            .filter(|&(_, (deg, _))| deg < 5.)
             .collect_vec();
         if targeted.is_empty() {
             return None;
@@ -230,12 +231,11 @@ impl Game {
 
     /// First level of controls. Captures pressed keys and calls appropriate functions.
     /// Additionaly, set all decays on the aircraft as true.
-    pub fn process_key(&mut self) {
+    pub fn process_key(&mut self, delta_time: f32) {
         self.player_mut()
             .aircraft_mut()
             .controls_mut()
             .set_all_decays(true);
-        let delta_time = 1.;
         key_pressed!(self.window, Key::Escape, self.window.set_should_close(true));
         key_pressed!(
             self.window,
@@ -286,8 +286,15 @@ impl Game {
 
     /// Perform all actions necessary to launch a missile
     pub fn launch_missile(&mut self) {
+        if self.last_launch_time + MISSILE_COOLDOWN > self.glfw.get_time() {
+            //warn!("Missile launch too early");
+            return;
+        }
+        warn!("Spawning a missile!");
         let target: Option<EnemyID> = self.targeted_enemy_id();
+        dbg!(target);
         self.spawn_missile(target);
+        self.last_launch_time = self.glfw.get_time();
     }
 
     /// Give the missiles a reference to the Enemy they are currently

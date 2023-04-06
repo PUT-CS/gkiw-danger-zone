@@ -30,7 +30,7 @@ fn main() {
         delta_time = current_frame - last_frame;
         last_frame = current_frame;
         game.process_events(&mut first_mouse, &mut last_x, &mut last_y);
-        game.process_key();
+        game.process_key(delta_time);
 
         unsafe {
             game.update(delta_time);
