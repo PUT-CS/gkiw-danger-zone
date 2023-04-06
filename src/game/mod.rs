@@ -1,4 +1,5 @@
 pub mod drawable;
+pub mod enemies;
 pub mod enemy;
 pub mod flight;
 pub mod game;

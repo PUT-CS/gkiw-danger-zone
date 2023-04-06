@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
+use crate::key_pressed;
+use super::enemies::Enemies;
 use super::missile::EnemyID;
 use super::terrain::Terrain;
 use super::{enemy::Enemy, missile::Missile, player::Player};
@@ -17,20 +19,26 @@ use crate::cg::model::Model;
 use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::flight::aircraft::AircraftKind::Mig21;
+use std::sync::Mutex;
 use crate::game::id_gen::{IDGenerator, IDKind};
 use cgmath::Vector3;
 use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
 use std::ffi::CStr;
+use crate::c_str;
+use lazy_static::lazy_static;
 
-const TARGET_ENEMIES: usize = 4;
+pub const TARGET_ENEMIES: usize = 4;
+
+lazy_static! {
+    pub static ref ID_GENERATOR: Mutex<IDGenerator> = Mutex::new(IDGenerator::default());
+}
 
 pub struct Game {
     player: Player,
-    enemies: HashMap<EnemyID, Enemy>,
+    enemies: Enemies,
     missiles: Vec<Missile>,
     terrain: Terrain,
     skybox: Model,
-    id_generator: IDGenerator,
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
@@ -80,7 +88,7 @@ impl Game {
             .expect("Configure global rayon threadpool");
 
         let mut terrain = Terrain::default();
-        terrain.model.scale(0.005);
+        terrain.model.scale(0.005).translate(vec3(0.0, -3500., 0.0));
 
         let mut player = Player::default();
         player.aircraft_mut().model_mut().scale(15.);
@@ -91,16 +99,17 @@ impl Game {
             .scale(0.5)
             .rotate(Vector3::unit_y(), Deg(-90.));
 
+        let enemies = Enemies::new();
+
         let mut skybox = Model::new("resources/objects/skybox/skybox.obj");
         skybox.scale(1000.);
 
         Game {
             player,
-            enemies: HashMap::with_capacity(TARGET_ENEMIES),
+            enemies,
             missiles: vec![],
             terrain,
             skybox,
-            id_generator: IDGenerator::default(),
             glfw,
             window,
             events,
@@ -116,20 +125,7 @@ impl Game {
     }
 
     pub fn respawn_enemies(&mut self) {
-        let diff = TARGET_ENEMIES - self.enemies.len();
-        if diff > 0 {
-            warn!("Respawning {diff} enemies");
-        }
-        (0..diff)
-            .map(|_| {
-                (
-                    self.id_generator.get_new_id_of(IDKind::Enemy),
-                    Enemy::new(Mig21),
-                )
-            })
-            .for_each(|t| {
-                self.enemies.insert(t.0, t.1);
-            });
+        self.enemies.respawn_enemies();
     }
 
     /// Check if the player aims their nose at an enemy, triggering a missile lock
@@ -140,6 +136,7 @@ impl Game {
 
         let mut targeted = self
             .enemies
+            .map
             .iter()
             .map(|tuple| {
                 let enemy = tuple.1;
@@ -152,7 +149,7 @@ impl Game {
         if targeted.is_empty() {
             return None;
         }
-        targeted.sort_by(|t1, t2| t2.1 .0.partial_cmp(&t2.1 .0).unwrap());
+        targeted.sort_by(|t1, t2| t1.1 .0.partial_cmp(&t2.1 .0).unwrap());
         Some(*targeted[0].0)
     }
 
@@ -175,15 +172,7 @@ impl Game {
         shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
 
-        model_matrix = self
-            .enemies
-            .get_mut(&0)
-            .unwrap()
-            .aircraft_mut()
-            .model()
-            .model_matrix();
-        shader.set_mat4(c_str!("model"), &model_matrix);
-        self.enemies.get(&0).unwrap().draw(&shader);
+        self.enemies.draw(&shader);
 
         model_matrix = self.player.cockpit.model_matrix();
         let time = self.glfw.get_time() as f32 * 2.0;

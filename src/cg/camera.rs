@@ -7,6 +7,7 @@ use cgmath::prelude::*;
 use cgmath::vec3;
 use cgmath::Deg;
 use cgmath::Quaternion;
+use crate::{gen_getters, gen_ref_getters};
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
 type Matrix4 = cgmath::Matrix4<f32>;
@@ -49,7 +50,7 @@ pub struct Camera {
 impl Default for Camera {
     fn default() -> Camera {
         Camera {
-            position: Point3::new(0.0, 7.0, 50.0),
+            position: Point3::new(0.0, 0.0, 5.0),
             front: vec3(0.0, 0.0, -1.0),
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),

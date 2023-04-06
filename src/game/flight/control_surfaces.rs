@@ -1,4 +1,5 @@
 use crate::cg::camera::ControlSurfaces;
+use crate::gen_getters;
 
 const DECAY: f32 = 0.0004;
 

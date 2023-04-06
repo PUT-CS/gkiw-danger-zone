@@ -1,5 +1,5 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
-use crate::cg::{camera::ControlSurfaces, model::Model};
+use crate::{cg::{camera::ControlSurfaces, model::Model}, gen_ref_getters};
 use lazy_static::lazy_static;
 use log::info;
 use std::collections::HashMap;

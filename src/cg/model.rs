@@ -22,6 +22,7 @@ use tobj;
 use worldgen::noise::perlin::PerlinNoise;
 use worldgen::noisemap::NoiseMapGeneratorBase;
 use worldgen::noisemap::{NoiseMap, NoiseMapGenerator, Seed, Size, Step};
+use crate::offset_of;
 
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;

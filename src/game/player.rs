@@ -4,6 +4,7 @@ use crate::cg::{
     model::Model,
     shader::Shader,
 };
+use crate::gen_ref_getters;
 use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
 
@@ -64,7 +65,7 @@ impl Player {
         self.camera_mut().pitch(controls.pitch_bias() * delta_time);
         self.camera_mut().yaw(controls.yaw_bias() * delta_time);
         self.camera_mut().roll(controls.roll_bias() * delta_time);
-        self.camera_mut().forward(controls.throttle());
+        //self.camera_mut().forward(controls.throttle());
     }
 
     /// Handle key events meant for player controls.
