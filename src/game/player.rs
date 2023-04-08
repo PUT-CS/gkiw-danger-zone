@@ -62,15 +62,19 @@ impl Player {
     /// Modify the player's position and camera based on the Controls
     pub fn apply_controls(&mut self, delta_time: f32) {
         let controls = self.aircraft.controls().clone();
-        self.camera_mut().pitch(controls.pitch_bias() * delta_time);
-        self.camera_mut().yaw(controls.yaw_bias() * delta_time);
-        self.camera_mut().roll(controls.roll_bias() * delta_time);
+        // self.camera_mut().pitch(controls.pitch_bias() * delta_time);
+        // self.camera_mut().yaw(controls.yaw_bias() * delta_time);
+        // self.camera_mut().roll(controls.roll_bias() * delta_time);
         //self.camera_mut().forward(controls.throttle());
+        let m = self.aircraft_mut().model_mut();
+        m.pitch(-controls.pitch_bias() * delta_time);
+        m.yaw(controls.yaw_bias() * delta_time);
+        m.roll(-controls.roll_bias() * delta_time);
+        //m.forward(-controls.throttle() * delta_time);
     }
 
     /// Handle key events meant for player controls.
     pub fn process_key(&mut self, direction: Movement, delta_time: f32) {
-        //let velocity = self.camera.movement_speed() * delta_time;
         let velocity = delta_time;
         match direction {
             PitchUp => {

@@ -83,8 +83,6 @@ impl Steerable for Camera {
     fn pitch(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
         self.front = (rotation * self.front).normalize();
-        // problematic
-        // we need to compensate for the unwanted roll
         self.up = (rotation * self.up).normalize();
         self.update_view_matrix();
     }
@@ -110,7 +108,6 @@ impl Steerable for Camera {
 impl Camera {
     pub fn update_view_matrix(&mut self) {
         self.view_matrix = Matrix4::look_at(self.position, self.position + self.front, self.up);
-        //self.projection_matrix = self.projection_matrix * self.view_matrix;
     }
 
     pub fn debug_print(&self) {}

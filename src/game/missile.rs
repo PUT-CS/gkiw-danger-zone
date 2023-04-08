@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::cg::model::Model;
 
 use super::enemy::Enemy;
@@ -23,8 +25,8 @@ pub struct Missile {
 
 impl Missile {
     pub fn new(target: Option<EnemyID>) -> Self {
-        Missile {
-            target: target,
+        Self {
+            target,
             model: Model::new("resources/objects/cockpit/cockpit.obj"),
             termination_timer: None,
         }
@@ -38,13 +40,14 @@ impl Missile {
 
     /// Missile is no longer pointing close enough to the Enemy it targets
     pub fn lose_lock(&mut self) {
-        self.target = None.into()
+        assert!(self.target().is_some());
+        self.target = None;
     }
 
     /// Only possible if the missile is not targeting an Enemy,
     /// but one flew in front of it close enough
     pub fn regain_lock(&mut self) {
-        assert_eq!(self.target, None);
+        assert!(self.target.is_none());
         todo!()
     }
 
@@ -55,5 +58,11 @@ impl Missile {
 
     pub fn target(&self) -> Option<EnemyID> {
         self.target
+    }
+}
+
+impl Debug for Missile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Missile: {:?}, {:?}", self.target, self.termination_timer)
     }
 }

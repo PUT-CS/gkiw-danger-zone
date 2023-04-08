@@ -3,6 +3,7 @@ use super::vertex::Vertex;
 use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
+use crate::offset_of;
 use cgmath::prelude::*;
 use cgmath::Deg;
 use cgmath::Quaternion;
@@ -12,17 +13,12 @@ use image;
 use image::DynamicImage::*;
 use image::GenericImage;
 use log::error;
-use log::warn;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
 use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
 use tobj;
-use worldgen::noise::perlin::PerlinNoise;
-use worldgen::noisemap::NoiseMapGeneratorBase;
-use worldgen::noisemap::{NoiseMap, NoiseMapGenerator, Seed, Size, Step};
-use crate::offset_of;
 
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
@@ -68,16 +64,22 @@ impl Default for Model {
 impl Steerable for Model {
     fn pitch(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
+        // self.front = (rotation * self.front).normalize();
+        // self.up = (rotation * self.up).normalize();
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
     }
 
     fn yaw(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
+        // self.right = (rotation * self.right).normalize();
+        // self.front = (rotation * self.front).normalize();
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
     }
 
     fn roll(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
+        // self.right = (rotation * self.right).normalize();
+        // self.up = (rotation * self.up).normalize();
         self.model_matrix = self.model_matrix * Matrix4::from(rotation);
     }
 
@@ -157,6 +159,14 @@ impl Model {
         model.load_model(path);
         unsafe { model.setup_mesh() }
         model
+    }
+
+    pub fn position(&self) -> Point3 {
+        Point3::from_vec(vec3(
+            self.model_matrix.w.x,
+            self.model_matrix.w.y,
+            self.model_matrix.w.z,
+        ))
     }
 
     pub fn scale(&mut self, scale: f32) -> &mut Self {
@@ -389,29 +399,6 @@ impl Model {
         );
 
         gl::BindVertexArray(0);
-    }
-
-    pub fn randomize_height(&mut self) {
-        warn!("Randomizing height");
-        let noise = PerlinNoise::new();
-
-        let nm1 = NoiseMap::new(noise)
-            .set(Seed::of("H?"))
-            .set(Step::of(0.005, 0.005));
-
-        let nm2 = NoiseMap::new(noise)
-            .set(Seed::of("dasdasdada"))
-            .set(Step::of(0.05, 0.05));
-
-        let nm = Box::new(nm1 + nm2 * 4);
-        let chunk = nm.generate_sized_chunk(Size::of(100, 100), 0, 0);
-        let mut idx = 0;
-        for row in chunk {
-            for number in row {
-                self.vertices[idx].position.y += number as f32 / 10.;
-                idx += 1;
-            }
-        }
     }
 }
 

@@ -8,6 +8,7 @@ use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
+use super::flight::steerable::Steerable;
 use super::missile::EnemyID;
 use super::terrain::Terrain;
 use super::{missile::Missile, player::Player};
@@ -18,14 +19,14 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::Vector3;
+use cgmath::{Vector3, Matrix};
 use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
 
 pub const TARGET_ENEMIES: usize = 4;
-pub const MISSILE_COOLDOWN: f64 = 3.0;
+pub const MISSILE_COOLDOWN: f64 = 0.01;
 
 lazy_static! {
     pub static ref ID_GENERATOR: Mutex<IDGenerator> = Mutex::new(IDGenerator::default());
@@ -90,7 +91,6 @@ impl Game {
         terrain.model.scale(0.005).translate(vec3(0.0, -3500., 0.0));
 
         let mut player = Player::default();
-        player.aircraft_mut().model_mut().scale(15.);
 
         player
             .cockpit_mut()
@@ -98,7 +98,7 @@ impl Game {
             .scale(0.5)
             .rotate(Vector3::unit_y(), Deg(-90.));
 
-        let enemies = Enemies::new();
+        let enemies = Enemies::default();
 
         let mut skybox = Model::new("resources/objects/skybox/skybox.obj");
         skybox.scale(1000.);
@@ -124,6 +124,7 @@ impl Game {
         self.respawn_enemies();
     }
 
+    /// Make the Enemies struct check for missing enemies and respawn them
     pub fn respawn_enemies(&mut self) {
         self.enemies.respawn_enemies();
     }
@@ -140,7 +141,7 @@ impl Game {
             .iter()
             .map(|tuple| {
                 let enemy = tuple.1;
-                let pos = enemy.aircraft().model().position;
+                let pos = enemy.aircraft().model().position();
                 let direction = (pos - player_position).normalize();
                 let deg = direction.angle(player_front).0.to_degrees();
                 (tuple.0, (deg, enemy))
@@ -174,6 +175,10 @@ impl Game {
         self.skybox.draw(&shader);
 
         self.enemies.draw(&shader);
+        
+        let m = self.player.aircraft().model().model_matrix();
+        shader.set_mat4(c_str!("model"), &m);
+        //self.player.draw(shader);
 
         model_matrix = self.player.cockpit.model_matrix();
         let time = self.glfw.get_time() as f32 * 2.0;
@@ -185,7 +190,7 @@ impl Game {
             ));
         shader.set_mat4(c_str!("model"), &model_matrix);
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
-        self.player.cockpit.draw(&shader);
+        //self.player.cockpit.draw(&shader);
     }
 
     pub fn process_events(
@@ -284,17 +289,20 @@ impl Game {
         &mut self.player
     }
 
-    /// Perform all actions necessary to launch a missile
+    /// Perform all actions necessary to launch a missile.
+    /// The game keeps track of the time of last missile launch
+    /// and doesn't let the player do it again before a specified time has passed.
+    /// Modify MISSILE_COOLDOWN to adjust.
     pub fn launch_missile(&mut self) {
         if self.last_launch_time + MISSILE_COOLDOWN > self.glfw.get_time() {
-            //warn!("Missile launch too early");
             return;
         }
         warn!("Spawning a missile!");
         let target: Option<EnemyID> = self.targeted_enemy_id();
-        dbg!(target);
+        eprintln!("Missile Launched! Targeting {target:?}");
         self.spawn_missile(target);
         self.last_launch_time = self.glfw.get_time();
+        dbg!(&self.missiles);
     }
 
     /// Give the missiles a reference to the Enemy they are currently

@@ -1,5 +1,3 @@
-use crate::Shader;
-
 pub trait Drawable {
-    unsafe fn draw(&self, shader: &Shader);
+    unsafe fn draw(&self, shader: &crate::cg::shader::Shader);
 }
