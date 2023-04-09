@@ -56,6 +56,7 @@ impl Enemies {
             a.roll(amount);
             a.yaw(amount);
             a.pitch(amount);
+            a.forward(5.);
         });
     }
 

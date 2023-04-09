@@ -71,11 +71,11 @@ impl Default for Camera {
 gen_getters! {
     Camera,
     movement_speed -> f32,
-    view_matrix -> Matrix4,
 }
 gen_ref_getters! {
     Camera,
     projection_matrix -> &Matrix4,
+    view_matrix -> &Matrix4,
     position -> &Point3,
 }
 

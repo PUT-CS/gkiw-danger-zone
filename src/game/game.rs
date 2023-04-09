@@ -8,7 +8,6 @@ use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
-use super::flight::steerable::Steerable;
 use super::missile::EnemyID;
 use super::terrain::Terrain;
 use super::{missile::Missile, player::Player};
@@ -26,7 +25,7 @@ use std::ffi::CStr;
 use std::sync::Mutex;
 
 pub const TARGET_ENEMIES: usize = 4;
-pub const MISSILE_COOLDOWN: f64 = 0.01;
+pub const MISSILE_COOLDOWN: f64 = 1.;
 
 lazy_static! {
     pub static ref ID_GENERATOR: Mutex<IDGenerator> = Mutex::new(IDGenerator::default());
@@ -176,8 +175,8 @@ impl Game {
 
         self.enemies.draw(&shader);
         
-        let m = self.player.aircraft().model().model_matrix();
-        shader.set_mat4(c_str!("model"), &m);
+        // let m = self.player.aircraft().model().model_matrix();
+        // shader.set_mat4(c_str!("model"), &m);
         //self.player.draw(shader);
 
         model_matrix = self.player.cockpit.model_matrix();
@@ -190,7 +189,7 @@ impl Game {
             ));
         shader.set_mat4(c_str!("model"), &model_matrix);
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
-        //self.player.cockpit.draw(&shader);
+        self.player.cockpit.draw(&shader);
     }
 
     pub fn process_events(
