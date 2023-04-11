@@ -35,7 +35,7 @@ pub struct Model {
     pub textures_loaded: Vec<Texture>,
     directory: String,
     model_matrix: Matrix4,
-    pub position: Point3,
+    //pub position: Point3,
     pub front: Vector3,
     pub up: Vector3,
     pub right: Vector3,
@@ -53,7 +53,7 @@ impl Default for Model {
             textures_loaded: vec![],
             model_matrix: Matrix4::from_value(1.0),
             directory: String::new(),
-            position: Point3::new(0., 0., 0.),
+            //position: Point3::new(0., 0., 0.),
             front: Vector3::unit_z() * -1.,
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),
@@ -84,7 +84,7 @@ impl Steerable for Model {
     }
 
     fn forward(&mut self, throttle: f32) {
-        self.position += self.front * throttle;
+        //self.position += self.front * throttle;
         self.model_matrix = self.model_matrix * Matrix4::from_translation(self.front * throttle);
     }
 }
@@ -179,13 +179,18 @@ impl Model {
         self
     }
 
-    pub fn rotate(&mut self, a: Vector3, d: Deg<f32>) -> &mut Self {
-        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(a, d);
+    pub fn rotate(&mut self, axis: Vector3, angle: Deg<f32>) -> &mut Self {
+        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(axis, angle);
         self
     }
 
     pub fn model_matrix(&self) -> Matrix4 {
         self.model_matrix
+    }
+
+    /// Use this cautiously!
+    pub fn set_model_matrix(&mut self, m: Matrix4) {
+        self.model_matrix = m
     }
 
     pub unsafe fn draw(&self, shader: &Shader) {

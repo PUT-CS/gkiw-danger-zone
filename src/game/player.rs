@@ -66,6 +66,13 @@ impl Player {
         self.camera_mut().yaw(controls.yaw_bias() * delta_time);
         self.camera_mut().roll(controls.roll_bias() * delta_time);
         self.camera_mut().forward(controls.throttle());
+        
+         let model = self.aircraft_mut().model_mut();
+        
+        // model.pitch(controls.pitch_bias() * delta_time);
+        // model.yaw(controls.yaw_bias() * delta_time);
+        // model.roll(controls.roll_bias() * delta_time);
+        // model.forward(controls.throttle());
     }
 
     /// Handle key events meant for player controls.
@@ -98,11 +105,11 @@ impl Player {
             }
             ThrottleUp => {
                 *self.aircraft.controls_mut().throttle_mut() =
-                    (self.aircraft.controls().throttle() + 0.0003).clamp(0.1, 1.)
+                    (self.aircraft.controls().throttle() + 0.00001).clamp(0.0001, 1.)
             }
             ThrottleDown => {
                 *self.aircraft.controls_mut().throttle_mut() =
-                    (self.aircraft.controls().throttle() - 0.0003).clamp(0.1, 1.)
+                    (self.aircraft.controls().throttle() - 0.00001).clamp(0.0001, 1.)
             }
         }
         self.camera.update_view_matrix();

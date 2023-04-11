@@ -50,7 +50,7 @@ pub struct Camera {
 impl Default for Camera {
     fn default() -> Camera {
         Camera {
-            position: Point3::new(0.0, 0.0, 5.0),
+            position: Point3::new(0.0, 0.0, 0.0),
             front: vec3(0.0, 0.0, -1.0),
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),
@@ -100,7 +100,7 @@ impl Steerable for Camera {
         self.update_view_matrix();
     }
     fn forward(&mut self, throttle: f32) {
-        self.position += self.front * throttle / 100.;
+        self.position += self.front * throttle;
         self.update_view_matrix();
     }
 }

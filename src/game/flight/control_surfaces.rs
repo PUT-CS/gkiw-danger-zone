@@ -20,7 +20,7 @@ impl Default for Controls {
             pitch_bias: 0.,
             yaw_bias: 0.,
             roll_bias: 0.,
-            throttle: 0.05,
+            throttle: 0.001,
             decay: [true, true, true],
         }
     }

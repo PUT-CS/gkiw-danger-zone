@@ -1,5 +1,6 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
 use crate::{cg::{camera::ControlSurfaces, model::Model}, gen_ref_getters};
+use cgmath::{Vector3, Deg};
 use lazy_static::lazy_static;
 use log::info;
 use std::collections::HashMap;
@@ -44,8 +45,10 @@ lazy_static! {
 impl Aircraft {
     pub fn new(kind: AircraftKind) -> Self {
         info!("Creating new Aircraft of kind : {kind:?}");
+        let mut model = Model::new(MODEL_PATHS.get(&kind).expect("Path not found for kind"));
+        //model.yaw(1.);
         Aircraft {
-            model: Model::new(MODEL_PATHS.get(&kind).expect("Path not found for kind")),
+            model,
             spec: BLUEPRINTS
                 .get(&kind)
                 .expect("Blueprint not found for kind")
@@ -101,8 +104,8 @@ impl Steerable for Aircraft {
             + self.spec().roll_rate() * amount.signum())
         .clamp(-MAX_ROLL_BIAS, MAX_ROLL_BIAS);
     }
-    /// Mutate the throttle, adding 0.1 (subject to change)
+    /// Mutate the throttle
     fn forward(&mut self, amount: f32) {
-        *self.controls_mut().throttle_mut() += 0.1
+        *self.controls_mut().throttle_mut() += amount
     }
 }
