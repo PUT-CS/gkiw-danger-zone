@@ -57,7 +57,7 @@ impl Missile {
     pub fn update(&mut self) -> MissileMessage {
         self.model.forward(0.1);
         self.last_position = self.model.position().to_vec();
-        dbg!(self.last_position);
+        //dbg!(self.last_position);
         MissileMessage::Terminated
     }
 

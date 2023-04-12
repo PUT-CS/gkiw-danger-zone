@@ -4,9 +4,9 @@ use crate::cg::{
     model::Model,
     shader::Shader,
 };
-use crate::gen_ref_getters;
 use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
+use crate::gen_ref_getters;
 
 #[derive(Clone, Debug)]
 pub struct Player {
@@ -62,17 +62,17 @@ impl Player {
     /// Modify the player's position and camera based on the Controls
     pub fn apply_controls(&mut self, delta_time: f32) {
         let controls = self.aircraft.controls().clone();
-        self.camera_mut().pitch(controls.pitch_bias() * delta_time);
-        self.camera_mut().yaw(controls.yaw_bias() * delta_time);
-        self.camera_mut().roll(controls.roll_bias() * delta_time);
-        self.camera_mut().forward(controls.throttle());
-        
-         let model = self.aircraft_mut().model_mut();
-        
-        // model.pitch(controls.pitch_bias() * delta_time);
-        // model.yaw(controls.yaw_bias() * delta_time);
-        // model.roll(controls.roll_bias() * delta_time);
-        // model.forward(controls.throttle());
+        // self.camera_mut().pitch(controls.pitch_bias() * delta_time);
+        // self.camera_mut().yaw(controls.yaw_bias() * delta_time);
+        // self.camera_mut().roll(controls.roll_bias() * delta_time);
+        // self.camera_mut().forward(controls.throttle());
+
+        let model = self.aircraft_mut().model_mut();
+
+        model.pitch(controls.pitch_bias() * delta_time);
+        model.yaw(controls.yaw_bias() * delta_time);
+        model.roll(controls.roll_bias() * delta_time);
+        model.forward(controls.throttle());
     }
 
     /// Handle key events meant for player controls.
@@ -112,6 +112,5 @@ impl Player {
                     (self.aircraft.controls().throttle() - 0.00001).clamp(0.0001, 1.)
             }
         }
-        self.camera.update_view_matrix();
     }
 }

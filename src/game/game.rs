@@ -1,4 +1,3 @@
-use crate::game::matrix_fmt::MatrixFmt;
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
@@ -19,8 +18,8 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Rotation3, Rotation};
-use cgmath::{Matrix, Vector3};
+use cgmath::Vector3;
+use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, Rotation, Rotation3, SquareMatrix};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -54,7 +53,7 @@ impl Game {
         glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
         glfw.window_hint(glfw::WindowHint::OpenGlProfile(
             glfw::OpenGlProfileHint::Core,
-        ));
+        )); 
 
         let (mut window, events) = glfw
             .create_window(
@@ -79,7 +78,7 @@ impl Game {
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
             gl::Enable(gl::DEPTH_TEST);
             gl::Enable(gl::BLEND);
-            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA); 
         }
 
         ThreadPoolBuilder::new()
@@ -88,7 +87,7 @@ impl Game {
             .expect("Configure global rayon threadpool");
 
         let mut terrain = Terrain::default();
-        terrain.model.scale(0.005).translate(vec3(0.0, -3500., 0.0));
+        terrain.model.scale(0.005).translate(vec3(0.0, -20., 0.0));
 
         let mut player = Player::default();
 
@@ -120,7 +119,6 @@ impl Game {
     pub fn update(&mut self, delta_time: f32) {
         self.player.apply_controls(delta_time * 200.);
         self.player.aircraft_mut().apply_decay();
-        dbg!(self.player.camera().position());
         // currently there will be 4 enemies stacked in one spot
         self.respawn_enemies();
         self.missiles.iter_mut().for_each(|m| {
@@ -160,37 +158,35 @@ impl Game {
     }
 
     pub unsafe fn draw(&mut self, shader: &Shader) {
-        
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
 
         shader.set_mat4(
             c_str!("projection"),
-            &perspective(Deg(45.), SCR_WIDTH as f32 / SCR_HEIGHT as f32, 0.1, 30000.0),
+            &self.player.camera().projection_matrix(),
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
-
         // Drawing game objects starts here
-        let mut model_matrix = self.terrain.model.model_matrix();
-        shader.set_mat4(c_str!("model"), &model_matrix);
+        //let mut model_matrix = self.terrain.model.model_matrix();
+        //shader.set_mat4(c_str!("model"), &model_matrix);
         self.terrain.draw(&shader);
 
-        model_matrix = self.skybox.model_matrix();
-        shader.set_mat4(c_str!("model"), &model_matrix);
+        // model_matrix = self.skybox.model_matrix();
+        // shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
 
         //self.enemies.draw(&shader);
 
-        let m = self.player.aircraft().model().model_matrix();
-        shader.set_mat4(c_str!("model"), &m);
+        // let m = self.player.aircraft().model().model_matrix();
+        // shader.set_mat4(c_str!("model"), &m);
         self.player.draw(shader);
-        
+
         self.missiles.iter_mut().for_each(|m| {
-            shader.set_mat4(c_str!("model"), &m.model.model_matrix());
+            //shader.set_mat4(c_str!("model"), &m.model.model_matrix());
             m.draw(shader);
         });
 
-        model_matrix = self.player.cockpit.model_matrix();
+        let mut model_matrix = self.player.cockpit.model_matrix();
         let time = self.glfw.get_time() as f32 * 2.0;
         model_matrix = model_matrix
             * Matrix4::from_translation(vec3(
