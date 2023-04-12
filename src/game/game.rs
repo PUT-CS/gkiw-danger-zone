@@ -18,8 +18,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::Vector3;
-use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, Rotation, Rotation3, SquareMatrix};
+use cgmath::{vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -53,7 +52,7 @@ impl Game {
         glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
         glfw.window_hint(glfw::WindowHint::OpenGlProfile(
             glfw::OpenGlProfileHint::Core,
-        )); 
+        ));
 
         let (mut window, events) = glfw
             .create_window(
@@ -78,7 +77,7 @@ impl Game {
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
             gl::Enable(gl::DEPTH_TEST);
             gl::Enable(gl::BLEND);
-            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA); 
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
 
         ThreadPoolBuilder::new()
@@ -87,20 +86,20 @@ impl Game {
             .expect("Configure global rayon threadpool");
 
         let mut terrain = Terrain::default();
-        terrain.model.scale(0.005).translate(vec3(0.0, -20., 0.0));
+        terrain.model.set_scale(0.005).translate(vec3(0.0, -3800., 0.0));
 
         let mut player = Player::default();
 
         player
             .cockpit_mut()
             .translate(vec3(0.0, -0.3, 0.0))
-            .scale(0.5)
+            .set_scale(0.5)
             .rotate(Vector3::unit_y(), Deg(-90.));
 
         let enemies = Enemies::default();
 
         let mut skybox = Model::new("resources/objects/skybox/skybox.obj");
-        skybox.scale(1000.);
+        skybox.set_scale(1000.);
 
         Game {
             player,

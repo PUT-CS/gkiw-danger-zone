@@ -95,7 +95,8 @@ impl Steerable for Model {
     }
 
     fn forward(&mut self, throttle: f32) {
-        //self.transformation.translation += self.front * throttle;
+        let model_front = self.orientation.rotate_vector(*VEC_FRONT).normalize();
+        self.transformation.translation += model_front * throttle;
         //self.model_matrix = self.model_matrix * Matrix4::from_translation(self.front * throttle);
     }
 }
@@ -170,6 +171,7 @@ impl Drawable for Model {
 }
 
 impl Model {
+    /// Load a ready to draw model from an `.obj` file
     pub fn new(path: &str) -> Model {
         let mut model = Model::default();
         model.load_model(path);
@@ -177,14 +179,22 @@ impl Model {
         model
     }
 
+    /// Construct a model matrix based on model's orientation, scale and translation
     fn build_model_matrix(&self) -> Matrix4 {
         let m = Matrix4::identity();
-        let t = m * Matrix4::from_translation(self.transformation.translation);
         let s = m * Matrix4::from_scale(self.transformation.scale);
+        let t = m * Matrix4::from_translation(self.transformation.translation);
         let r = m * Matrix4::from(self.orientation);
-        r * t * s
+        // Why is the order like this?
+        // Those operations apply right-to-left, so first, when the model
+        // is at [0,0,0], we rotate, then translate to the desired point
+        // and only then we scale. Messing up this order results in
+        // unexpected results like the model rotating around world origin
+        // instead of its own local axis
+        s * t * r
     }
 
+    /// Get the model's position in world coordinates
     pub fn position(&self) -> Point3 {
         let m = self.build_model_matrix();
         Point3::from_vec(vec3(
@@ -194,7 +204,15 @@ impl Model {
         ))
     }
 
+    /// Scale the model based on its current scale.
+    /// For example: scaling by 0.5 and then by 2.0 restores original size
     pub fn scale(&mut self, scale: f32) -> &mut Self {
+        self.transformation.scale *= scale;
+        self
+    }
+
+    /// Set the scale of the model
+    pub fn set_scale(&mut self, scale: f32) -> &mut Self {
         self.transformation.scale = scale;
         self
     }
@@ -218,7 +236,7 @@ impl Model {
         self.model_matrix = m
     }
 
-    // load a model from file and stores the resulting meshes in the meshes vector.
+    /// Load a model from file and store the resulting meshes in the meshes vector.
     pub fn load_model(&mut self, path: &str) {
         let path = Path::new(&path);
 
