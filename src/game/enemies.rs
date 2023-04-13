@@ -7,7 +7,7 @@ use super::{
 };
 use crate::game::flight::aircraft::AircraftKind::*;
 use crate::game::id_gen::IDKind;
-use log::warn;
+use log::info;
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 
@@ -32,7 +32,7 @@ impl Enemies {
         if diff == 0 {
             return None;
         }
-        warn!("Respawning {diff} enemies");
+        info!("Respawning {diff} enemies");
         let mut id_gen = ID_GENERATOR.lock().expect("Lock IDGenerator mutex");
         Some(
             (0..diff)

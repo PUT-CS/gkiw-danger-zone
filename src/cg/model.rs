@@ -1,5 +1,10 @@
+use super::consts::VEC_FRONT;
+use super::consts::VEC_RIGHT;
+use super::consts::VEC_UP;
 use super::texture::Texture;
+use super::transformation::Transformation;
 use super::vertex::Vertex;
+use crate::c_str;
 use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
@@ -13,6 +18,8 @@ use image;
 use image::DynamicImage::*;
 use image::GenericImage;
 use log::error;
+use log::warn;
+use std::ffi::CStr;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
 use std::os::raw::c_void;
@@ -34,11 +41,8 @@ pub struct Model {
     ebo: u32,
     pub textures_loaded: Vec<Texture>,
     directory: String,
-    model_matrix: Matrix4,
-    //pub position: Point3,
-    pub front: Vector3,
-    pub up: Vector3,
-    pub right: Vector3,
+    pub transformation: Transformation,
+    pub orientation: Quaternion<f32>,
 }
 
 impl Default for Model {
@@ -51,52 +55,50 @@ impl Default for Model {
             vbo: u32::MAX,
             ebo: u32::MAX,
             textures_loaded: vec![],
-            model_matrix: Matrix4::from_value(1.0),
+            transformation: Transformation::default(),
+            orientation: Quaternion::from_angle_x(Deg(0.)),
             directory: String::new(),
-            //position: Point3::new(0., 0., 0.),
-            front: Vector3::unit_z() * -1.,
-            up: Vector3::unit_y(),
-            right: Vector3::unit_x(),
         }
     }
 }
 
+//self.transformation.yaw += amount;
+// self.right = (rotation * self.right).normalize();
+// self.front = (rotation * self.front).normalize();
+//self.model_matrix = self.model_matrix * Matrix4::from(rotation);
+
 impl Steerable for Model {
     fn pitch(&mut self, amount: f32) {
-        let rotation = Quaternion::from_axis_angle(self.right, Deg(amount));
-        // self.front = (rotation * self.front).normalize();
-        // self.up = (rotation * self.up).normalize();
-        self.model_matrix = self.model_matrix * Matrix4::from(rotation);
+        let rotation = Quaternion::from_axis_angle(*VEC_RIGHT, Deg(amount));
+        self.orientation = self.orientation * rotation;
     }
 
     fn yaw(&mut self, amount: f32) {
-        let rotation = Quaternion::from_axis_angle(self.up, Deg(amount));
-        // self.right = (rotation * self.right).normalize();
-        // self.front = (rotation * self.front).normalize();
-        self.model_matrix = self.model_matrix * Matrix4::from(rotation);
+        let rotation = Quaternion::from_axis_angle(*VEC_UP, Deg(amount));
+        self.orientation = self.orientation * rotation;
     }
 
     fn roll(&mut self, amount: f32) {
-        let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
-        // self.right = (rotation * self.right).normalize();
-        // self.up = (rotation * self.up).normalize();
-        self.model_matrix = self.model_matrix * Matrix4::from(rotation);
+        let rotation = Quaternion::from_axis_angle(*VEC_FRONT, Deg(amount));
+        self.orientation = self.orientation * rotation;
     }
 
     fn forward(&mut self, throttle: f32) {
-        //self.position += self.front * throttle;
-        self.model_matrix = self.model_matrix * Matrix4::from_translation(self.front * throttle);
+        self.transformation.translation += self.front() * throttle;
     }
 }
 
 impl Drawable for Model {
     unsafe fn draw(&self, shader: &Shader) {
-        if self.directory == "" {
+        if self.directory.is_empty() {
             error!(
                 "Attempt to draw a model that was not loaded. Use the `load_model` method first."
             );
             panic!("Attempt to draw a model that was not loaded");
         }
+
+        let matrix = self.build_model_matrix();
+        shader.set_mat4(c_str!("model"), &matrix);
 
         // bind appropriate textures
         let mut diffuse_nr = 0;
@@ -151,114 +153,89 @@ impl Drawable for Model {
 }
 
 impl Model {
-    pub fn new<T>(path: T) -> Model
-    where
-        T: ToString + AsRef<OsStr> + std::fmt::Display,
-    {
+    /// Load a ready to draw model from an `.obj` file
+    pub fn new(path: &str) -> Model {
         let mut model = Model::default();
         model.load_model(path);
         unsafe { model.setup_mesh() }
         model
     }
 
+    /// Construct a model matrix based on model's orientation, scale and translation
+    fn build_model_matrix(&self) -> Matrix4 {
+        let m = Matrix4::identity();
+        let s = m * Matrix4::from_scale(self.transformation.scale);
+        let t = m * Matrix4::from_translation(self.transformation.translation);
+        let r = m * Matrix4::from(self.orientation);
+        // Why is the order like this?
+        // Those operations apply right-to-left, so first, when the model
+        // is at [0,0,0], we rotate, then translate to the desired point
+        // and only then we scale. Messing up this order results in
+        // unexpected results like the model rotating around world origin
+        // instead of its own local axis
+        s * t * r
+    }
+
+    /// Get the model's position in world coordinates
     pub fn position(&self) -> Point3 {
+        let m = self.build_model_matrix();
         Point3::from_vec(vec3(
-            self.model_matrix.w.x,
-            self.model_matrix.w.y,
-            self.model_matrix.w.z,
+            m.w.x,
+            m.w.y,
+            m.w.z,
         ))
     }
 
+    pub fn front(&self) -> Vector3 {
+        self.orientation.rotate_vector(*VEC_FRONT).normalize()
+    }
+
+    /// Scale the model based on its current scale.
+    /// For example: scaling by 0.5 and then by 2.0 restores original size
     pub fn scale(&mut self, scale: f32) -> &mut Self {
-        self.model_matrix = self.model_matrix * Matrix4::from_scale(scale);
+        self.transformation.scale *= scale;
+        self
+    }
+
+    /// Set the scale of the model
+    pub fn set_scale(&mut self, scale: f32) -> &mut Self {
+        self.transformation.scale = scale;
         self
     }
 
     pub fn translate(&mut self, t: Vector3) -> &mut Self {
-        self.model_matrix = self.model_matrix * Matrix4::from_translation(t);
+        self.transformation.translation = t;
         self
     }
 
     pub fn rotate(&mut self, axis: Vector3, angle: Deg<f32>) -> &mut Self {
-        self.model_matrix = self.model_matrix * Matrix4::from_axis_angle(axis, angle);
+        self.orientation = self.orientation * Quaternion::from_axis_angle(axis, angle);
         self
     }
 
-    pub fn model_matrix(&self) -> Matrix4 {
-        self.model_matrix
-    }
-
     /// Use this cautiously!
-    pub fn set_model_matrix(&mut self, m: Matrix4) {
-        self.model_matrix = m
+    pub fn apply_quaternion(&mut self, quaternion: Quaternion<f32>) {
+        warn!("Use of Model::apply_quaternion");
+        self.orientation = self.orientation * quaternion;
     }
 
-    pub unsafe fn draw(&self, shader: &Shader) {
-        if self.directory == "" {
-            error!(
-                "Attempt to draw a model that was not loaded. Use the `load_model` method first."
-            );
-            panic!("Attempt to draw a model that was not loaded");
-        }
+    // pub fn model_matrix(&self) -> Matrix4 {
+    //     self.model_matrix
+    // }
 
-        // bind appropriate textures
-        let mut diffuse_nr = 0;
-        let mut specular_nr = 0;
-        let mut normal_nr = 0;
-        let mut height_nr = 0;
-        for (i, texture) in self.textures.iter().enumerate() {
-            gl::ActiveTexture(gl::TEXTURE0 + i as u32);
-            let name = &texture.type_;
-            let number = match name.as_str() {
-                "texture_diffuse" => {
-                    diffuse_nr += 1;
-                    diffuse_nr
-                }
-                "texture_specular" => {
-                    specular_nr += 1;
-                    specular_nr
-                }
-                "texture_normal" => {
-                    normal_nr += 1;
-                    normal_nr
-                }
-                "texture_height" => {
-                    height_nr += 1;
-                    height_nr
-                }
-                _ => panic!("unknown texture type"),
-            };
-            // set the sampler to the correct texture unit
-            let sampler = CString::new(format!("{}{}", name, number)).unwrap();
-            gl::Uniform1i(
-                gl::GetUniformLocation(shader.id, sampler.as_ptr()),
-                i as i32,
-            );
-            // bind the texture
-            gl::BindTexture(gl::TEXTURE_2D, texture.id);
-        }
+    // /// Use this cautiously!
+    // pub fn set_model_matrix(&mut self, m: Matrix4) {
+    //     self.model_matrix = m
+    // }
 
-        //shader.set_mat4(c_str!("model"), &self.model_matrix);
-        // draw mesh
-        gl::BindVertexArray(self.vao);
-        gl::DrawElements(
-            gl::TRIANGLES,
-            self.indices.len() as i32,
-            gl::UNSIGNED_INT,
-            ptr::null(),
-        );
-        gl::BindVertexArray(0);
-
-        // always good practice to set everything back to defaults once configured.
-        gl::ActiveTexture(gl::TEXTURE0);
-    }
-
-    // load a model from file and stores the resulting meshes in the meshes vector.
-    pub fn load_model<T>(&mut self, path: T)
-    where
-        T: ToString + AsRef<OsStr>,
-    {
+    /// Load a model from file and store the resulting meshes in the meshes vector.
+    pub fn load_model(&mut self, path: &str) {
         let path = Path::new(&path);
+
+        if !path.exists() {
+            error!("Attempt to load model from non-existent path: {path:?}");
+            panic!();
+        }
 
         self.directory = path
             .parent()
@@ -446,9 +423,4 @@ unsafe fn texture_from_file(path: &str, directory: &str) -> u32 {
     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
     texture_id
-}
-
-fn round(number: f32, rounding: i32) -> f32 {
-    let scale: f32 = 10_f64.powi(rounding) as f32;
-    (number * scale).round() / scale
 }

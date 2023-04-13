@@ -35,7 +35,6 @@ impl Default for Terrain {
         let path = TERRAINS
             .get(&TerrainType::Desert)
             .expect("No path for that terrain");
-        warn!("{}", path);
         Terrain::new(&path, TerrainType::Desert)
     }
 }

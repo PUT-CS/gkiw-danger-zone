@@ -9,6 +9,7 @@ const SCR_HEIGHT: u32 = 1000;
 mod cg;
 mod game;
 mod macros;
+mod tests;
 
 fn main() {
     let mut first_mouse = true;

@@ -1,4 +1,3 @@
-use crate::game::matrix_fmt::MatrixFmt;
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
@@ -19,14 +18,13 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{perspective, vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Rotation3, Rotation};
-use cgmath::{Matrix, Vector3};
+use cgmath::{vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
 
 pub const TARGET_ENEMIES: usize = 4;
-pub const MISSILE_COOLDOWN: f64 = 0.2;
+pub const MISSILE_COOLDOWN: f64 = 1.;
 
 lazy_static! {
     pub static ref ID_GENERATOR: Mutex<IDGenerator> = Mutex::new(IDGenerator::default());
@@ -47,6 +45,7 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
         log4rs::init_file("log_config.yaml", Default::default()).unwrap();
         info!("Initialized log4rs");
         info!("Initialized GLFW");
@@ -88,20 +87,23 @@ impl Game {
             .expect("Configure global rayon threadpool");
 
         let mut terrain = Terrain::default();
-        terrain.model.scale(0.005).translate(vec3(0.0, -3500., 0.0));
+        terrain
+            .model
+            .set_scale(0.005)
+            .translate(vec3(0.0, -3800., 0.0));
 
         let mut player = Player::default();
 
         player
             .cockpit_mut()
             .translate(vec3(0.0, -0.3, 0.0))
-            .scale(0.5)
+            .set_scale(0.5)
             .rotate(Vector3::unit_y(), Deg(-90.));
 
         let enemies = Enemies::default();
 
         let mut skybox = Model::new("resources/objects/skybox/skybox.obj");
-        skybox.scale(1000.);
+        skybox.set_scale(1000.);
 
         Game {
             player,
@@ -120,12 +122,12 @@ impl Game {
     pub fn update(&mut self, delta_time: f32) {
         self.player.apply_controls(delta_time * 200.);
         self.player.aircraft_mut().apply_decay();
-        dbg!(self.player.camera().position());
-        // currently there will be 4 enemies stacked in one spot
         self.respawn_enemies();
         self.missiles.iter_mut().for_each(|m| {
             m.update();
-        })
+        });
+        self.missiles
+            .retain(|m| !matches!(m.termination_timer, Some(0)));
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
@@ -160,46 +162,34 @@ impl Game {
     }
 
     pub unsafe fn draw(&mut self, shader: &Shader) {
-        
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
 
         shader.set_mat4(
             c_str!("projection"),
-            &perspective(Deg(45.), SCR_WIDTH as f32 / SCR_HEIGHT as f32, 0.1, 30000.0),
+            &self.player.camera().projection_matrix(),
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
         // Drawing game objects starts here
-        let mut model_matrix = self.terrain.model.model_matrix();
-        shader.set_mat4(c_str!("model"), &model_matrix);
         self.terrain.draw(&shader);
-
-        model_matrix = self.skybox.model_matrix();
-        shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
-
-        //self.enemies.draw(&shader);
-
-        let m = self.player.aircraft().model().model_matrix();
-        shader.set_mat4(c_str!("model"), &m);
+        self.enemies.draw(&shader);
         self.player.draw(shader);
-        
         self.missiles.iter_mut().for_each(|m| {
-            shader.set_mat4(c_str!("model"), &m.model.model_matrix());
             m.draw(shader);
         });
 
-        model_matrix = self.player.cockpit.model_matrix();
-        let time = self.glfw.get_time() as f32 * 2.0;
-        model_matrix = model_matrix
-            * Matrix4::from_translation(vec3(
-                time.sin() * 0.01,
-                time.cos().sin() * 0.01,
-                time.cos() * 0.01,
-            ));
-        shader.set_mat4(c_str!("model"), &model_matrix);
-        shader.set_mat4(c_str!("view"), &Matrix4::identity());
+        // let mut model_matrix = self.player.cockpit.model_matrix();
+        // let time = self.glfw.get_time() as f32 * 2.0;
+        // model_matrix = model_matrix
+        //     * Matrix4::from_translation(vec3(
+        //         time.sin() * 0.01,
+        //         time.cos().sin() * 0.01,
+        //         time.cos() * 0.01,
+        //     ));
+        // shader.set_mat4(c_str!("model"), &model_matrix);
+        //shader.set_mat4(c_str!("view"), &Matrix4::identity());
         //self.player.cockpit.draw(&shader);
     }
 
@@ -307,12 +297,10 @@ impl Game {
         if self.last_launch_time + MISSILE_COOLDOWN > self.glfw.get_time() {
             return;
         }
-        warn!("Spawning a missile!");
         let target: Option<EnemyID> = self.targeted_enemy_id();
-        eprintln!("Missile Launched! Targeting {target:?}");
         self.spawn_missile(target);
         self.last_launch_time = self.glfw.get_time();
-        dbg!(&self.missiles);
+        warn!("Spawned a missile, targeting {target:?}!");
     }
 
     /// Give the missiles a reference to the Enemy they are currently

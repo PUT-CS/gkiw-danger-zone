@@ -1,12 +1,15 @@
+use cgmath::{vec3, Rotation};
+
 use super::flight::aircraft::{Aircraft, AircraftKind};
 use crate::cg::{
     camera::{Camera, ControlSurfaces, Movement, Movement::*},
+    consts::VEC_FRONT,
     model::Model,
     shader::Shader,
 };
-use crate::gen_ref_getters;
 use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
+use crate::gen_ref_getters;
 
 #[derive(Clone, Debug)]
 pub struct Player {
@@ -66,13 +69,21 @@ impl Player {
         self.camera_mut().yaw(controls.yaw_bias() * delta_time);
         self.camera_mut().roll(controls.roll_bias() * delta_time);
         self.camera_mut().forward(controls.throttle());
-        
-         let model = self.aircraft_mut().model_mut();
-        
+
+        // let model = self.aircraft_mut().model_mut();
+
         // model.pitch(controls.pitch_bias() * delta_time);
         // model.yaw(controls.yaw_bias() * delta_time);
         // model.roll(controls.roll_bias() * delta_time);
         // model.forward(controls.throttle());
+
+        // //Third person camera (not looking really good now)
+        // self.camera.position = self.aircraft().model().position()
+        //     + (self
+        //         .aircraft()
+        //         .model()
+        //         .orientation
+        //         .rotate_vector(*VEC_FRONT - vec3(-0.05, -0.5, -5.0)))
     }
 
     /// Handle key events meant for player controls.
@@ -112,6 +123,5 @@ impl Player {
                     (self.aircraft.controls().throttle() - 0.00001).clamp(0.0001, 1.)
             }
         }
-        self.camera.update_view_matrix();
     }
 }

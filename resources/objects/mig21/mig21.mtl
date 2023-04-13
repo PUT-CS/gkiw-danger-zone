@@ -1,7 +1,7 @@
-# Blender 3.4.1 MTL File: 'mig21.blend'
+# Blender 3.5.0 MTL File: 'mig21.blend'
 # www.blender.org
 
-newmtl Material
+newmtl Material.001
 Ns 188.726166
 Ka 0.475410 0.475410 0.475410
 Ks 0.500000 0.500000 0.500000

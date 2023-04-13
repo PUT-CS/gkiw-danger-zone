@@ -1,7 +1,16 @@
-use cgmath::{Matrix4, Vector3};
+use cgmath::{vec3, Vector3};
 
-pub struct Transfromation {
-    translation: Vector3<f32>,
-    scale: f32,
-    rotation: Matrix4<f32>,
+#[derive(Debug, Clone)]
+pub struct Transformation {
+    pub translation: Vector3<f32>,
+    pub scale: f32,
+}
+
+impl Default for Transformation {
+    fn default() -> Self {
+        Self {
+            translation: vec3(0., 0., 0.),
+            scale: 1.,
+        }
+    }
 }
