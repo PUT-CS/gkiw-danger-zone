@@ -18,6 +18,7 @@ use image;
 use image::DynamicImage::*;
 use image::GenericImage;
 use log::error;
+use log::warn;
 use std::ffi::CStr;
 use std::ffi::{CString, OsStr};
 use std::mem::size_of;
@@ -83,8 +84,7 @@ impl Steerable for Model {
     }
 
     fn forward(&mut self, throttle: f32) {
-        let model_front = self.orientation.rotate_vector(*VEC_FRONT).normalize();
-        self.transformation.translation += model_front * throttle;
+        self.transformation.translation += self.front() * throttle;
     }
 }
 
@@ -186,6 +186,10 @@ impl Model {
         ))
     }
 
+    pub fn front(&self) -> Vector3 {
+        self.orientation.rotate_vector(*VEC_FRONT).normalize()
+    }
+
     /// Scale the model based on its current scale.
     /// For example: scaling by 0.5 and then by 2.0 restores original size
     pub fn scale(&mut self, scale: f32) -> &mut Self {
@@ -207,6 +211,12 @@ impl Model {
     pub fn rotate(&mut self, axis: Vector3, angle: Deg<f32>) -> &mut Self {
         self.orientation = self.orientation * Quaternion::from_axis_angle(axis, angle);
         self
+    }
+
+    /// Use this cautiously!
+    pub fn apply_quaternion(&mut self, quaternion: Quaternion<f32>) {
+        warn!("Use of Model::apply_quaternion");
+        self.orientation = self.orientation * quaternion;
     }
 
     // pub fn model_matrix(&self) -> Matrix4 {

@@ -1,8 +1,9 @@
-use crate::{cg::camera::Camera, cg::model::Model};
-use cgmath::{EuclideanSpace, Vector3};
-use std::fmt::Debug;
 use super::drawable::Drawable;
+use crate::cg::consts::VEC_UP;
 use crate::game::flight::steerable::Steerable;
+use crate::{cg::camera::Camera, cg::model::Model};
+use cgmath::{Deg, EuclideanSpace, InnerSpace, Matrix3, Matrix4, Quaternion, SquareMatrix};
+use std::fmt::Debug;
 
 pub type EnemyID = u32;
 const TERMINATION_TIME: u32 = 30000;
@@ -29,17 +30,20 @@ impl Missile {
     /// Create a new missile.
     /// Uses player's position to spawn the missile at the right coordinates.
     pub fn new(camera: &Camera, target: Option<EnemyID>) -> Self {
-        let pos = camera.position().to_vec();
         let mut model = Model::new("resources/objects/cockpit/cockpit.obj");
 
-        //let axis = model.front.cross(camera.front);
-        //let angle = model.front.dot(camera.front).acos();
+        let m = camera.view_matrix().invert().expect("Invertible view matrix");
+        let rot = Matrix3::from([
+            [m.x.x, m.x.y, m.x.z],
+            [m.y.x, m.y.y, m.y.z],
+            [m.z.x, m.z.y, m.z.z],
+        ]);
+        let quat = Quaternion::from(rot);
+        model.apply_quaternion(quat);
 
-        //let mut m = Matrix4::<f32>::identity();
-        //m = m * camera.view_matrix().invert().unwrap();
-        //model.set_model_matrix(m);
-
+        let pos = camera.position().to_vec();
         model.translate(pos);
+
         Self {
             target,
             model,

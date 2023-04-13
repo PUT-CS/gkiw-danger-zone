@@ -7,7 +7,8 @@ use cgmath::prelude::*;
 use cgmath::vec3;
 use cgmath::Deg;
 use cgmath::Quaternion;
-use crate::{gen_getters, gen_ref_getters};
+use crate::gen_ref_getters;
+
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
 type Matrix4 = cgmath::Matrix4<f32>;
@@ -39,7 +40,6 @@ pub struct Camera {
     pub front: Vector3,
     pub up: Vector3,
     pub right: Vector3,
-    view_matrix: Matrix4,
     projection_matrix: Matrix4,
     mouse_sensitivity: f32,
     zoom: f32,
@@ -52,7 +52,6 @@ impl Default for Camera {
             front: vec3(0.0, 0.0, -1.0),
             up: Vector3::unit_y(),
             right: Vector3::unit_x(),
-            view_matrix: Matrix4::from_axis_angle(Vector3::unit_z(), Deg(180.0)),
             projection_matrix: perspective(
                 Deg(ZOOM),
                 SCR_WIDTH as f32 / SCR_HEIGHT as f32,

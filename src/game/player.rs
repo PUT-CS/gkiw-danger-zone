@@ -70,14 +70,14 @@ impl Player {
         self.camera_mut().roll(controls.roll_bias() * delta_time);
         self.camera_mut().forward(controls.throttle());
 
-        let model = self.aircraft_mut().model_mut();
+        // let model = self.aircraft_mut().model_mut();
 
         // model.pitch(controls.pitch_bias() * delta_time);
         // model.yaw(controls.yaw_bias() * delta_time);
         // model.roll(controls.roll_bias() * delta_time);
         // model.forward(controls.throttle());
 
-        // Third person camera (not looking really good now)
+        // //Third person camera (not looking really good now)
         // self.camera.position = self.aircraft().model().position()
         //     + (self
         //         .aircraft()
