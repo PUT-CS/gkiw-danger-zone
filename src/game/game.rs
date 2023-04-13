@@ -1,3 +1,4 @@
+use crate::cg::particles;
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
@@ -161,7 +162,7 @@ impl Game {
         Some(*targeted[0].0)
     }
 
-    pub unsafe fn draw(&mut self, shader: &Shader) {
+    pub unsafe fn draw(&mut self, shader: &Shader, particle_shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
 
