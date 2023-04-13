@@ -24,7 +24,7 @@ use std::ffi::CStr;
 use std::sync::Mutex;
 
 pub const TARGET_ENEMIES: usize = 4;
-pub const MISSILE_COOLDOWN: f64 = 0.2;
+pub const MISSILE_COOLDOWN: f64 = 1.;
 
 lazy_static! {
     pub static ref ID_GENERATOR: Mutex<IDGenerator> = Mutex::new(IDGenerator::default());
@@ -87,7 +87,10 @@ impl Game {
             .expect("Configure global rayon threadpool");
 
         let mut terrain = Terrain::default();
-        terrain.model.set_scale(0.005).translate(vec3(0.0, -3800., 0.0));
+        terrain
+            .model
+            .set_scale(0.005)
+            .translate(vec3(0.0, -3800., 0.0));
 
         let mut player = Player::default();
 
@@ -119,11 +122,12 @@ impl Game {
     pub fn update(&mut self, delta_time: f32) {
         self.player.apply_controls(delta_time * 200.);
         self.player.aircraft_mut().apply_decay();
-        // currently there will be 4 enemies stacked in one spot
         self.respawn_enemies();
         self.missiles.iter_mut().for_each(|m| {
             m.update();
-        })
+        });
+        self.missiles
+            .retain(|m| !matches!(m.termination_timer, Some(0)));
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
@@ -166,25 +170,13 @@ impl Game {
             &self.player.camera().projection_matrix(),
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
-        
+
         // Drawing game objects starts here
-        //let mut model_matrix = self.terrain.model.model_matrix();
-        //shader.set_mat4(c_str!("model"), &model_matrix);
         self.terrain.draw(&shader);
-
-        // model_matrix = self.skybox.model_matrix();
-        // shader.set_mat4(c_str!("model"), &model_matrix);
         self.skybox.draw(&shader);
-
-        //self.enemies.draw(&shader);
-
-        // let m = self.player.aircraft().model().model_matrix();
-        // shader.set_mat4(c_str!("model"), &m);
+        self.enemies.draw(&shader);
         self.player.draw(shader);
-        //dbg!(self.player.aircraft().model().position());
-
         self.missiles.iter_mut().for_each(|m| {
-            //shader.set_mat4(c_str!("model"), &m.model.model_matrix());
             m.draw(shader);
         });
 
