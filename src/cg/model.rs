@@ -40,9 +40,8 @@ pub struct Model {
     ebo: u32,
     pub textures_loaded: Vec<Texture>,
     directory: String,
-    model_matrix: Matrix4,
-    transformation: Transformation,
-    orientation: Quaternion<f32>,
+    pub transformation: Transformation,
+    pub orientation: Quaternion<f32>,
 }
 
 impl Default for Model {
@@ -55,7 +54,6 @@ impl Default for Model {
             vbo: u32::MAX,
             ebo: u32::MAX,
             textures_loaded: vec![],
-            model_matrix: Matrix4::from_value(1.0),
             transformation: Transformation::default(),
             orientation: Quaternion::from_angle_x(Deg(0.)),
             directory: String::new(),
@@ -63,41 +61,30 @@ impl Default for Model {
     }
 }
 
+//self.transformation.yaw += amount;
+// self.right = (rotation * self.right).normalize();
+// self.front = (rotation * self.front).normalize();
+//self.model_matrix = self.model_matrix * Matrix4::from(rotation);
+
 impl Steerable for Model {
     fn pitch(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(*VEC_RIGHT, Deg(amount));
         self.orientation = self.orientation * rotation;
-
-        //self.transformation.pitch += amount;
-        // self.front = (rotation * self.front).normalize();
-        // self.up = (rotation * self.up).normalize();
-        //self.model_matrix = self.model_matrix * Matrix4::from(rotation);
     }
 
     fn yaw(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(*VEC_UP, Deg(amount));
         self.orientation = self.orientation * rotation;
-
-        //self.transformation.yaw += amount;
-        // self.right = (rotation * self.right).normalize();
-        // self.front = (rotation * self.front).normalize();
-        //self.model_matrix = self.model_matrix * Matrix4::from(rotation);
     }
 
     fn roll(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(*VEC_FRONT, Deg(amount));
         self.orientation = self.orientation * rotation;
-
-        //self.transformation.roll += amount;
-        // self.right = (rotation * self.right).normalize();
-        // self.up = (rotation * self.up).normalize();
-        //self.model_matrix = self.model_matrix * Matrix4::from(rotation);
     }
 
     fn forward(&mut self, throttle: f32) {
         let model_front = self.orientation.rotate_vector(*VEC_FRONT).normalize();
         self.transformation.translation += model_front * throttle;
-        //self.model_matrix = self.model_matrix * Matrix4::from_translation(self.front * throttle);
     }
 }
 
@@ -110,11 +97,6 @@ impl Drawable for Model {
             panic!("Attempt to draw a model that was not loaded");
         }
 
-        // let m = Matrix4::identity();
-        // let t = m * Matrix4::from_translation(self.transformation.translation);
-        // let s = m * Matrix4::from_scale(self.transformation.scale);
-        // let r = m * Matrix4::from(self.orientation);
-        // let matrix = r * t * s;
         let matrix = self.build_model_matrix();
         shader.set_mat4(c_str!("model"), &matrix);
 
@@ -227,14 +209,14 @@ impl Model {
         self
     }
 
-    pub fn model_matrix(&self) -> Matrix4 {
-        self.model_matrix
-    }
+    // pub fn model_matrix(&self) -> Matrix4 {
+    //     self.model_matrix
+    // }
 
-    /// Use this cautiously!
-    pub fn set_model_matrix(&mut self, m: Matrix4) {
-        self.model_matrix = m
-    }
+    // /// Use this cautiously!
+    // pub fn set_model_matrix(&mut self, m: Matrix4) {
+    //     self.model_matrix = m
+    // }
 
     /// Load a model from file and store the resulting meshes in the meshes vector.
     pub fn load_model(&mut self, path: &str) {

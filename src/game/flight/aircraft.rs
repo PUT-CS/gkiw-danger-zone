@@ -37,7 +37,7 @@ pub enum AircraftKind {
 
 lazy_static! {
     static ref BLUEPRINTS: HashMap<AircraftKind, AircraftSpec> =
-        HashMap::from([(Mig21, AircraftSpec::new([0.0002, 0.0005, 0.0005]))]);
+        HashMap::from([(Mig21, AircraftSpec::new([0.0003, 0.0005, 0.0005]))]);
     static ref MODEL_PATHS: HashMap<AircraftKind, &'static str> =
         HashMap::from([(Mig21, "resources/objects/mig21/mig21.obj")]);
 }

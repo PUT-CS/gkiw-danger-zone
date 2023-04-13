@@ -45,6 +45,7 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
         log4rs::init_file("log_config.yaml", Default::default()).unwrap();
         info!("Initialized log4rs");
         info!("Initialized GLFW");
@@ -165,6 +166,7 @@ impl Game {
             &self.player.camera().projection_matrix(),
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
+        
         // Drawing game objects starts here
         //let mut model_matrix = self.terrain.model.model_matrix();
         //shader.set_mat4(c_str!("model"), &model_matrix);
@@ -179,22 +181,23 @@ impl Game {
         // let m = self.player.aircraft().model().model_matrix();
         // shader.set_mat4(c_str!("model"), &m);
         self.player.draw(shader);
+        //dbg!(self.player.aircraft().model().position());
 
         self.missiles.iter_mut().for_each(|m| {
             //shader.set_mat4(c_str!("model"), &m.model.model_matrix());
             m.draw(shader);
         });
 
-        let mut model_matrix = self.player.cockpit.model_matrix();
-        let time = self.glfw.get_time() as f32 * 2.0;
-        model_matrix = model_matrix
-            * Matrix4::from_translation(vec3(
-                time.sin() * 0.01,
-                time.cos().sin() * 0.01,
-                time.cos() * 0.01,
-            ));
-        shader.set_mat4(c_str!("model"), &model_matrix);
-        shader.set_mat4(c_str!("view"), &Matrix4::identity());
+        // let mut model_matrix = self.player.cockpit.model_matrix();
+        // let time = self.glfw.get_time() as f32 * 2.0;
+        // model_matrix = model_matrix
+        //     * Matrix4::from_translation(vec3(
+        //         time.sin() * 0.01,
+        //         time.cos().sin() * 0.01,
+        //         time.cos() * 0.01,
+        //     ));
+        // shader.set_mat4(c_str!("model"), &model_matrix);
+        //shader.set_mat4(c_str!("view"), &Matrix4::identity());
         //self.player.cockpit.draw(&shader);
     }
 
@@ -302,12 +305,10 @@ impl Game {
         if self.last_launch_time + MISSILE_COOLDOWN > self.glfw.get_time() {
             return;
         }
-        warn!("Spawning a missile!");
         let target: Option<EnemyID> = self.targeted_enemy_id();
-        eprintln!("Missile Launched! Targeting {target:?}");
         self.spawn_missile(target);
         self.last_launch_time = self.glfw.get_time();
-        dbg!(&self.missiles);
+        warn!("Spawned a missile, targeting {target:?}!");
     }
 
     /// Give the missiles a reference to the Enemy they are currently

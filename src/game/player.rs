@@ -1,6 +1,9 @@
+use cgmath::{vec3, Rotation};
+
 use super::flight::aircraft::{Aircraft, AircraftKind};
 use crate::cg::{
     camera::{Camera, ControlSurfaces, Movement, Movement::*},
+    consts::VEC_FRONT,
     model::Model,
     shader::Shader,
 };
@@ -62,17 +65,25 @@ impl Player {
     /// Modify the player's position and camera based on the Controls
     pub fn apply_controls(&mut self, delta_time: f32) {
         let controls = self.aircraft.controls().clone();
-        // self.camera_mut().pitch(controls.pitch_bias() * delta_time);
-        // self.camera_mut().yaw(controls.yaw_bias() * delta_time);
-        // self.camera_mut().roll(controls.roll_bias() * delta_time);
-        // self.camera_mut().forward(controls.throttle());
+        self.camera_mut().pitch(controls.pitch_bias() * delta_time);
+        self.camera_mut().yaw(controls.yaw_bias() * delta_time);
+        self.camera_mut().roll(controls.roll_bias() * delta_time);
+        self.camera_mut().forward(controls.throttle());
 
         let model = self.aircraft_mut().model_mut();
 
-        model.pitch(controls.pitch_bias() * delta_time);
-        model.yaw(controls.yaw_bias() * delta_time);
-        model.roll(controls.roll_bias() * delta_time);
-        model.forward(controls.throttle());
+        // model.pitch(controls.pitch_bias() * delta_time);
+        // model.yaw(controls.yaw_bias() * delta_time);
+        // model.roll(controls.roll_bias() * delta_time);
+        // model.forward(controls.throttle());
+
+        // Third person camera (not looking really good now)
+        // self.camera.position = self.aircraft().model().position()
+        //     + (self
+        //         .aircraft()
+        //         .model()
+        //         .orientation
+        //         .rotate_vector(*VEC_FRONT - vec3(-0.05, -0.5, -5.0)))
     }
 
     /// Handle key events meant for player controls.

@@ -1,13 +1,10 @@
-use crate::{
-    cg::{camera::Camera, model::Model},
-    game::matrix_fmt::MatrixFmt,
-};
-use cgmath::{vec3, Deg, InnerSpace, Matrix, Rotation, SquareMatrix, Matrix4, EuclideanSpace, Vector3};
+use crate::{cg::camera::Camera, cg::model::Model};
+use cgmath::{EuclideanSpace, Vector3};
 use std::fmt::Debug;
+use super::drawable::Drawable;
+use crate::game::flight::steerable::Steerable;
 
-use super::{drawable::Drawable, flight::steerable::Steerable};
 pub type EnemyID = u32;
-
 const TERMINATION_TIME: u32 = 30000;
 
 pub enum MissileMessage {
@@ -22,7 +19,7 @@ pub enum MissileMessage {
 pub struct Missile {
     target: Option<EnemyID>,
     pub model: Model,
-    pub last_position: Vector3<f32>,
+    //pub last_position: Vector3<f32>,
     /// An optional integer representing the number of ticks left until termination.
     /// Set to TERMINATION_TIME by calling `terminate` on a Missile instance.
     termination_timer: Option<u32>,
@@ -34,19 +31,18 @@ impl Missile {
     pub fn new(camera: &Camera, target: Option<EnemyID>) -> Self {
         let pos = camera.position().to_vec();
         let mut model = Model::new("resources/objects/cockpit/cockpit.obj");
-        
+
         //let axis = model.front.cross(camera.front);
         //let angle = model.front.dot(camera.front).acos();
-        
-        let mut m = Matrix4::<f32>::identity();
-        m = m * camera.view_matrix().invert().unwrap();
-        model.set_model_matrix(m);
-        
+
+        //let mut m = Matrix4::<f32>::identity();
+        //m = m * camera.view_matrix().invert().unwrap();
+        //model.set_model_matrix(m);
+
         model.translate(pos);
         Self {
             target,
             model,
-            last_position: pos,
             termination_timer: None,
         }
     }
@@ -56,8 +52,6 @@ impl Missile {
     //pub fn update(&mut self, target_info: &Enemy) -> MissileMessage {
     pub fn update(&mut self) -> MissileMessage {
         self.model.forward(0.1);
-        self.last_position = self.model.position().to_vec();
-        //dbg!(self.last_position);
         MissileMessage::Terminated
     }
 
@@ -96,7 +90,6 @@ impl Debug for Missile {
 
 impl Drawable for Missile {
     unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
-        
         self.model.draw(shader);
     }
 }
