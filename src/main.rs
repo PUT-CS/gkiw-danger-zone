@@ -27,7 +27,7 @@ fn main() {
     );
     let particles_shader = Shader::new(
 	"src/shaders/particle.vs",
-	"src/shaders/partivle.fs"
+	"src/shaders/particle.fs"
     );
 
     while !game.window.should_close() {
