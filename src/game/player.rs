@@ -1,15 +1,18 @@
 use cgmath::{vec3, Rotation};
 
 use super::flight::aircraft::{Aircraft, AircraftKind};
-use crate::cg::{
-    camera::{Camera, ControlSurfaces, Movement, Movement::*},
-    consts::VEC_FRONT,
-    model::Model,
-    shader::Shader,
-};
 use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
 use crate::gen_ref_getters;
+use crate::{
+    cg::{
+        camera::{Camera, ControlSurfaces, Movement, Movement::*},
+        consts::VEC_FRONT,
+        model::Model,
+        shader::Shader,
+    },
+    DELTA_TIME,
+};
 
 #[derive(Clone, Debug)]
 pub struct Player {
@@ -63,12 +66,13 @@ impl Player {
     }
 
     /// Modify the player's position and camera based on the Controls
-    pub fn apply_controls(&mut self, delta_time: f32) {
-        let controls = self.aircraft.controls().clone();
-        self.camera_mut().pitch(controls.pitch_bias() * delta_time);
-        self.camera_mut().yaw(controls.yaw_bias() * delta_time);
-        self.camera_mut().roll(controls.roll_bias() * delta_time);
-        self.camera_mut().forward(controls.throttle());
+    pub fn apply_controls(&mut self) {
+        let delta_time = unsafe { DELTA_TIME };
+        let c = self.aircraft.controls().clone();
+        self.camera_mut().pitch(c.pitch_bias() * delta_time);
+        self.camera_mut().yaw(c.yaw_bias() * delta_time);
+        self.camera_mut().roll(c.roll_bias() * delta_time);
+        self.camera_mut().forward(c.throttle() * delta_time);
 
         // let model = self.aircraft_mut().model_mut();
 
@@ -87,8 +91,8 @@ impl Player {
     }
 
     /// Handle key events meant for player controls.
-    pub fn process_key(&mut self, direction: Movement, delta_time: f32) {
-        let velocity = delta_time;
+    pub fn process_key(&mut self, direction: Movement) {
+        let velocity = unsafe { DELTA_TIME };
         match direction {
             PitchUp => {
                 self.aircraft_mut().pitch(velocity);
@@ -115,12 +119,10 @@ impl Player {
                 self.aircraft_mut().set_decay(ControlSurfaces::Roll, false);
             }
             ThrottleUp => {
-                *self.aircraft.controls_mut().throttle_mut() =
-                    (self.aircraft.controls().throttle() + 0.00001).clamp(0.0001, 1.)
+                self.aircraft_mut().throttle_up();
             }
             ThrottleDown => {
-                *self.aircraft.controls_mut().throttle_mut() =
-                    (self.aircraft.controls().throttle() - 0.00001).clamp(0.0001, 1.)
+                self.aircraft_mut().throttle_down();
             }
         }
     }

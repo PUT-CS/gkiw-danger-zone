@@ -25,7 +25,7 @@ use std::ffi::CStr;
 use std::sync::Mutex;
 
 pub const TARGET_ENEMIES: usize = 4;
-pub const MISSILE_COOLDOWN: f64 = 1.;
+pub const MISSILE_COOLDOWN: f64 = 0.0001;
 
 lazy_static! {
     pub static ref ID_GENERATOR: Mutex<IDGenerator> = Mutex::new(IDGenerator::default());
@@ -120,8 +120,9 @@ impl Game {
     }
 
     /// Compute new positions of all game objects based on input and state of the game
-    pub fn update(&mut self, delta_time: f32) {
-        self.player.apply_controls(delta_time * 200.);
+    pub fn update(&mut self) {
+        dbg!(self.player.aircraft().controls());
+        self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
         self.missiles.iter_mut().for_each(|m| {
@@ -237,7 +238,7 @@ impl Game {
 
     /// First level of controls. Captures pressed keys and calls appropriate functions.
     /// Additionaly, set all decays on the aircraft as true.
-    pub fn process_key(&mut self, delta_time: f32) {
+    pub fn process_key(&mut self) {
         self.player_mut()
             .aircraft_mut()
             .controls_mut()
@@ -246,42 +247,42 @@ impl Game {
         key_pressed!(
             self.window,
             Key::W,
-            self.player.process_key(Movement::PitchDown, delta_time)
+            self.player.process_key(Movement::PitchDown)
         );
         key_pressed!(
             self.window,
             Key::S,
-            self.player.process_key(Movement::PitchUp, delta_time)
+            self.player.process_key(Movement::PitchUp)
         );
         key_pressed!(
             self.window,
             Key::A,
-            self.player.process_key(Movement::RollLeft, delta_time)
+            self.player.process_key(Movement::RollLeft)
         );
         key_pressed!(
             self.window,
             Key::D,
-            self.player.process_key(Movement::RollRight, delta_time)
+            self.player.process_key(Movement::RollRight)
         );
         key_pressed!(
             self.window,
             Key::E,
-            self.player.process_key(Movement::YawRight, delta_time)
+            self.player.process_key(Movement::YawRight)
         );
         key_pressed!(
             self.window,
             Key::Q,
-            self.player.process_key(Movement::YawLeft, delta_time)
+            self.player.process_key(Movement::YawLeft)
         );
         key_pressed!(
             self.window,
             Key::LeftShift,
-            self.player.process_key(Movement::ThrottleUp, delta_time)
+            self.player.process_key(Movement::ThrottleUp)
         );
         key_pressed!(
             self.window,
             Key::LeftControl,
-            self.player.process_key(Movement::ThrottleDown, delta_time)
+            self.player.process_key(Movement::ThrottleDown)
         );
         key_pressed!(self.window, Key::Space, self.launch_missile())
     }
