@@ -1,7 +1,7 @@
 use crate::cg::camera::ControlSurfaces;
-use crate::gen_getters;
+use crate::{gen_getters, DELTA_TIME};
 
-const DECAY: f32 = 0.0004;
+const DECAY: f32 = 50.;
 
 #[derive(Clone, Debug)]
 /// Struct describing the mechanical state of the control parameters in the aircraft.
@@ -20,7 +20,7 @@ impl Default for Controls {
             pitch_bias: 0.,
             yaw_bias: 0.,
             roll_bias: 0.,
-            throttle: 0.001,
+            throttle: 0.1,
             decay: [true, true, true],
         }
     }
@@ -51,24 +51,27 @@ impl Controls {
     }
     /// Compute a new value of the aircraft's pitch based on decay and set it as the new pitch bias
     pub fn apply_pitch_decay(&mut self) {
-        self.pitch_bias = if self.pitch_bias.abs() > DECAY {
-            round(self.pitch_bias + DECAY * self.pitch_bias.signum() * -1., 5)
+        let delta_time = unsafe {DELTA_TIME};
+        self.pitch_bias = if self.pitch_bias.abs() > delta_time {
+            round(self.pitch_bias + (DECAY * delta_time) * self.pitch_bias.signum() * -1., 5)
         } else {
             0.
         }
     }
     /// Compute a new value of the aircraft's yaw based on decay and set it as the new yaw bias
     pub fn apply_yaw_decay(&mut self) {
-        self.yaw_bias = if self.yaw_bias.abs() > DECAY {
-            round(self.yaw_bias + DECAY * self.yaw_bias.signum() * -1., 5)
+        let delta_time = unsafe{DELTA_TIME};
+        self.yaw_bias = if self.yaw_bias.abs() > delta_time {
+            round(self.yaw_bias + (DECAY * delta_time) * self.yaw_bias.signum() * -1., 5)
         } else {
             0.
         }
     }
     /// Compute a new value of the aircraft's roll based on decay and set it the as the new roll bias
     pub fn apply_roll_decay(&mut self) {
-        self.roll_bias = if self.roll_bias.abs() > DECAY {
-            round(self.roll_bias + DECAY * self.roll_bias.signum() * -1., 5)
+        let delta_time = unsafe{DELTA_TIME};
+        self.roll_bias = if self.roll_bias.abs() > delta_time {
+            round(self.roll_bias + (DECAY * delta_time) * self.roll_bias.signum() * -1., 5)
         } else {
             0.
         }

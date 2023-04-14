@@ -1,14 +1,14 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
-use crate::{cg::{camera::ControlSurfaces, model::Model}, gen_ref_getters};
+use crate::{cg::{camera::ControlSurfaces, model::Model}, gen_ref_getters, DELTA_TIME};
 use cgmath::{Vector3, Deg};
 use lazy_static::lazy_static;
 use log::info;
 use std::collections::HashMap;
 use AircraftKind::*;
 
-const MAX_PITCH_BIAS: f32 = 0.25;
-const MAX_YAW_BIAS: f32 = 0.20;
-const MAX_ROLL_BIAS: f32 = 0.70;
+const MAX_PITCH_BIAS: f32 = 35.;
+const MAX_YAW_BIAS: f32 = 20.;
+const MAX_ROLL_BIAS: f32 = 70.;
 
 /// Struct representing an aircraft which can be steered and displayed
 #[derive(Clone, Debug)]
@@ -37,7 +37,7 @@ pub enum AircraftKind {
 
 lazy_static! {
     static ref BLUEPRINTS: HashMap<AircraftKind, AircraftSpec> =
-        HashMap::from([(Mig21, AircraftSpec::new([0.0003, 0.0005, 0.0005]))]);
+        HashMap::from([(Mig21, AircraftSpec::new([0.03, 0.05, 0.05]))]);
     static ref MODEL_PATHS: HashMap<AircraftKind, &'static str> =
         HashMap::from([(Mig21, "resources/objects/mig21/mig21.obj")]);
 }
@@ -81,31 +81,44 @@ impl Aircraft {
             self.controls_mut().apply_roll_decay()
         }
     }
+    
+    pub fn throttle_up(&mut self) {
+        let delta_time = unsafe {DELTA_TIME};
+        *self.controls_mut().throttle_mut() =
+            (self.controls().throttle() + delta_time ).clamp(1., 10.)
+    }
+    
+    pub fn throttle_down(&mut self) {
+        let delta_time = unsafe {DELTA_TIME};
+        *self.controls_mut().throttle_mut() =
+            (self.controls().throttle() - delta_time).clamp(1., 10.)
+    }
 }
 /// This implementation handles mutating the control parameters of the aircraft.
 /// It does not modify the actual model of the plane, only sets values
 /// which are later used to calculate the actual rotation of the model
+const STEERING_SENSITIVITY: f32 = 1500.;
 impl Steerable for Aircraft {
     /// Mutate the pitch flaps bias
     fn pitch(&mut self, amount: f32) {
         *self.controls_mut().pitch_bias_mut() = (self.controls().pitch_bias()
-            + self.spec().pitch_rate() * amount.signum())
-        .clamp(-MAX_PITCH_BIAS, MAX_PITCH_BIAS);
+            + self.spec().pitch_rate() * amount.signum() * amount.abs() * STEERING_SENSITIVITY)
+            .clamp(-MAX_PITCH_BIAS, MAX_PITCH_BIAS);
     }
     /// Mutate the yaw flaps bias
     fn yaw(&mut self, amount: f32) {
         *self.controls_mut().yaw_bias_mut() = (self.controls().yaw_bias()
-            + self.spec().yaw_rate() * amount.signum())
+            + self.spec().yaw_rate() * amount.signum() * amount.abs() * STEERING_SENSITIVITY)
         .clamp(-MAX_YAW_BIAS, MAX_YAW_BIAS);
     }
     /// Mutate the roll flaps bias
     fn roll(&mut self, amount: f32) {
         *self.controls_mut().roll_bias_mut() = (self.controls().roll_bias()
-            + self.spec().roll_rate() * amount.signum())
+            + self.spec().roll_rate() * amount.signum() * amount.abs() * STEERING_SENSITIVITY)
         .clamp(-MAX_ROLL_BIAS, MAX_ROLL_BIAS);
     }
     /// Mutate the throttle
     fn forward(&mut self, amount: f32) {
-        *self.controls_mut().throttle_mut() += amount
+        *self.controls_mut().throttle_mut() += amount * STEERING_SENSITIVITY
     }
 }

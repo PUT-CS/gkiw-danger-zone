@@ -1,3 +1,5 @@
+use std::{borrow::BorrowMut, sync::Mutex};
+
 use cg::shader::Shader;
 use glfw::Context;
 extern crate glfw;
@@ -11,12 +13,13 @@ mod game;
 mod macros;
 mod tests;
 
+static mut DELTA_TIME: f32 = 0.;
+
 fn main() {
     let mut first_mouse = true;
     let mut last_x: f32 = SCR_WIDTH as f32 / 2.;
     let mut last_y: f32 = SCR_HEIGHT as f32 / 2.;
 
-    let mut delta_time: f32;
     let mut last_frame: f32 = 0.;
 
     let mut game = Game::new();
@@ -28,17 +31,23 @@ fn main() {
 
     while !game.window.should_close() {
         let current_frame = game.glfw.get_time() as f32;
-        delta_time = current_frame - last_frame;
+        update_delta_time(current_frame, last_frame);
         last_frame = current_frame;
         game.process_events(&mut first_mouse, &mut last_x, &mut last_y);
-        game.process_key(delta_time);
+        game.process_key();
 
         unsafe {
-            game.update(delta_time);
+            game.update();
             game.draw(&shader);
         }
 
         game.window.swap_buffers();
         game.glfw.poll_events();
+    }
+}
+
+fn update_delta_time(current_frame: f32, last_frame: f32) {
+    unsafe {
+        DELTA_TIME = current_frame - last_frame;
     }
 }
