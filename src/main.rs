@@ -28,6 +28,10 @@ fn main() {
         "src/shaders/model.vs",
         "src/shaders/fragment_transparent.fs",
     );
+    let particles_shader = Shader::new(
+	"src/shaders/particle.vs",
+	"src/shaders/particle.fs"
+    );
 
     while !game.window.should_close() {
         let current_frame = game.glfw.get_time() as f32;
@@ -38,7 +42,7 @@ fn main() {
 
         unsafe {
             game.update();
-            game.draw(&shader);
+            game.draw(&shader, &particles_shader);
         }
 
         game.window.swap_buffers();
