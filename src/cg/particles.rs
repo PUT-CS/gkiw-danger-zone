@@ -1,6 +1,11 @@
-use cgmath::{num_traits::float, Vector2, Vector3, Vector4, Zero};
+use std::{ffi::c_void, ptr};
+
+use cgmath::{Vector3, Vector4, Zero};
 use rand::{thread_rng, Rng};
-// change all 0.1 to delta time when available!!!!
+
+use crate::{game::drawable::Drawable, DELTA_TIME};
+
+use crate::cg::shader::Shader;
 
 pub struct Particle {
     postion: Vector3<f32>,
@@ -13,6 +18,8 @@ pub struct ParticleGenerator {
     particles: Vec<Particle>,
     color: Vector4<f32>,
     last_revived_particle_idx: usize,
+    pub vao: u32,
+    vbo: u32,
 }
 
 impl Particle {
@@ -26,14 +33,52 @@ impl Particle {
     }
 }
 
+impl Drawable for ParticleGenerator {
+    unsafe fn draw(&self, shader: &Shader) {
+	// gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
+	// shader.use_program();
+	// self.particles.iter_mut().for_each(|p|{
+	//     if p.life > 0. {
+	// 	shader.set_mat3(c_str!("offset"), p.postion);
+		
+	//     }
+	// })
+    }
+}
+
 impl ParticleGenerator {
     pub fn new(size: usize, color: Vector4<f32>) -> Self {
         let mut particles = Vec::with_capacity(size);
         particles.resize_with(size, || Particle::new(color));
-        Self {
+        let mut generator = Self {
             particles,
             color,
             last_revived_particle_idx: 0,
+            vao: u32::MAX,
+	    vbo: u32::MAX,
+        };
+	generator.init();
+	generator
+    }
+
+    pub fn init(&mut self) {
+        let mut particle_quad = vec![
+            0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
+        ];
+        unsafe {
+	    let data: *const c_void;
+	    data = particle_quad.as_ptr() as *const c_void;
+            gl::GenVertexArrays(1, &mut self.vao);
+	    gl::GenBuffers(1, &mut self.vbo);
+	    gl::BindVertexArray(self.vao);
+	    //fill mesh buffer
+	    gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
+	    gl::BufferData(gl::ARRAY_BUFFER, 96, data, gl::STATIC_DRAW);
+	    //set mesh attributes
+	    gl::EnableVertexAttribArray(0);
+	    gl::VertexAttribPointer(0, 4, gl::FLOAT, gl::FALSE, 16, ptr::null() as *const c_void);
+	    gl::BindVertexArray(0);
         }
     }
 
@@ -66,7 +111,7 @@ impl ParticleGenerator {
         self.particles[first_dead].life = 1.;
         self.particles[first_dead].velocity = position * 0.3;
     }
-    
+
     pub fn update_particles(
         &mut self,
         position: Vector3<f32>,
@@ -77,12 +122,13 @@ impl ParticleGenerator {
             let first_dead = self.first_dead_particle();
             self.respawn_particle(position, offset, first_dead);
         }
-	self.particles.iter_mut().for_each(|p|{
-	    p.life -= 0.1;
-	    if p.life > 0. {
-		p.postion -= p.velocity * 0.1;
-		p.color.w -= 2.5 * 0.1; 
-	    }
-	})
+        self.particles.iter_mut().for_each(|p| {
+            let delta_time = unsafe { DELTA_TIME };
+            p.life -= delta_time;
+            if p.life > 0. {
+                p.postion -= p.velocity * delta_time;
+                p.color.w -= 2.5 * delta_time;
+            }
+        })
     }
 }

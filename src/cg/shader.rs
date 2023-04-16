@@ -1,6 +1,6 @@
-use cgmath::{Matrix, Matrix4};
-use gl;
+use cgmath::{Matrix, Matrix3, Matrix4};
 use gl::types::*;
+use gl::{self, FALSE};
 use log::info;
 use std::ffi::{CStr, CString};
 use std::fs::File;
@@ -69,6 +69,15 @@ impl Shader {
 
     pub unsafe fn set_mat4(&self, name: &CStr, mat: &Matrix4<f32>) {
         gl::UniformMatrix4fv(
+            gl::GetUniformLocation(self.id, name.as_ptr()),
+            1,
+            gl::FALSE,
+            mat.as_ptr(),
+        );
+    }
+
+    pub unsafe fn set_mat3(&self, name: &CStr, mat: &Matrix3<f32>) {
+        gl::UniformMatrix3fv(
             gl::GetUniformLocation(self.id, name.as_ptr()),
             1,
             gl::FALSE,
