@@ -1,8 +1,9 @@
-use std::{ffi::c_void, ptr};
+use std::{ffi::c_void, ffi::CStr, ptr};
 
 use cgmath::{Vector3, Vector4, Zero};
 use rand::{thread_rng, Rng};
 
+use crate::c_str;
 use crate::{game::drawable::Drawable, DELTA_TIME};
 
 use crate::cg::shader::Shader;
@@ -35,15 +36,21 @@ impl Particle {
 
 impl Drawable for ParticleGenerator {
     unsafe fn draw(&self, shader: &Shader) {
-	// gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
-	// shader.use_program();
-	// self.particles.iter_mut().for_each(|p|{
-	//     if p.life > 0. {
-	// 	shader.set_mat3(c_str!("offset"), p.postion);
-		
-	//     }
-	// })
+	gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
+	shader.use_program();
+	self.particles.iter().for_each(|p|{
+	    if p.life > 0. {
+		shader.set_vector3(c_str!("offset"), &p.postion);
+		shader.set_vector4(c_str!("color"), &p.color);
+		// there should be texture bind!
+		gl::BindVertexArray(self.vao);
+		gl::DrawArrays(gl::TRIANGLES, 0, 6);
+		gl::BindVertexArray(0); 
+	    }
+	});
+	gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
     }
+    
 }
 
 impl ParticleGenerator {
