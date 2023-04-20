@@ -173,6 +173,14 @@ impl Game {
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
+	//setup particle shaders
+	particle_shader.use_program();
+
+        particle_shader.set_mat4(
+            c_str!("projection"),
+            &self.player.camera().projection_matrix(),
+        );
+        
         // Drawing game objects starts here
         self.terrain.draw(&shader);
         self.skybox.draw(&shader);
@@ -181,7 +189,7 @@ impl Game {
         self.missiles.iter_mut().for_each(|m| {
             m.draw(shader);
         });
-
+	
         // let mut model_matrix = self.player.cockpit.model_matrix();
         // let time = self.glfw.get_time() as f32 * 2.0;
         // model_matrix = model_matrix

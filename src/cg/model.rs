@@ -1,6 +1,7 @@
 use super::consts::VEC_FRONT;
 use super::consts::VEC_RIGHT;
 use super::consts::VEC_UP;
+use super::particles::ParticleGenerator;
 use super::texture::Texture;
 use super::transformation::Transformation;
 use super::vertex::Vertex;
@@ -9,6 +10,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
 use crate::offset_of;
+use cgmath::Vector4;
 use cgmath::prelude::*;
 use cgmath::Deg;
 use cgmath::Quaternion;
@@ -43,6 +45,7 @@ pub struct Model {
     directory: String,
     pub transformation: Transformation,
     pub orientation: Quaternion<f32>,
+    pub particle_generator: ParticleGenerator,
 }
 
 impl Default for Model {
@@ -58,6 +61,7 @@ impl Default for Model {
             transformation: Transformation::default(),
             orientation: Quaternion::from_angle_x(Deg(0.)),
             directory: String::new(),
+	    particle_generator: ParticleGenerator::new(500, Vector4::new(1., 1., 1., 1.)),
         }
     }
 }

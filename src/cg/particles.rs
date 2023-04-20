@@ -8,6 +8,7 @@ use crate::{game::drawable::Drawable, DELTA_TIME};
 
 use crate::cg::shader::Shader;
 
+#[derive(Clone, Debug)]
 pub struct Particle {
     postion: Vector3<f32>,
     velocity: Vector3<f32>,
@@ -15,6 +16,7 @@ pub struct Particle {
     life: f32,
 }
 
+#[derive(Clone, Debug)]
 pub struct ParticleGenerator {
     particles: Vec<Particle>,
     color: Vector4<f32>,
@@ -37,7 +39,6 @@ impl Particle {
 impl Drawable for ParticleGenerator {
     unsafe fn draw(&self, shader: &Shader) {
 	gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
-	shader.use_program();
 	self.particles.iter().for_each(|p|{
 	    if p.life > 0. {
 		shader.set_vector3(c_str!("offset"), &p.postion);
