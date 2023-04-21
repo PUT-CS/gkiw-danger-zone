@@ -8,3 +8,4 @@ pub mod missile;
 pub mod player;
 pub mod terrain;
 pub mod matrix_fmt;
+pub mod missile_guidance;

@@ -9,7 +9,9 @@ use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
+use super::enemy::Enemy;
 use super::missile::EnemyID;
+use super::missile_guidance::GuidanceStatus;
 use super::terrain::Terrain;
 use super::{missile::Missile, player::Player};
 use crate::c_str;
@@ -25,7 +27,7 @@ use std::ffi::CStr;
 use std::sync::Mutex;
 
 pub const TARGET_ENEMIES: usize = 4;
-pub const MISSILE_COOLDOWN: f64 = 0.0001;
+pub const MISSILE_COOLDOWN: f64 = 0.5;
 
 lazy_static! {
     pub static ref ID_GENERATOR: Mutex<IDGenerator> = Mutex::new(IDGenerator::default());
@@ -91,13 +93,13 @@ impl Game {
         terrain
             .model
             .set_scale(0.005)
-            .translate(vec3(0.0, -3800., 0.0));
+            .set_translation(vec3(0.0, -3800., 0.0));
 
         let mut player = Player::default();
 
         player
             .cockpit_mut()
-            .translate(vec3(0.0, -0.3, 0.0))
+            .set_translation(vec3(0.0, -0.3, 0.0))
             .set_scale(0.5)
             .rotate(Vector3::unit_y(), Deg(-90.));
 
@@ -121,15 +123,13 @@ impl Game {
 
     /// Compute new positions of all game objects based on input and state of the game
     pub fn update(&mut self) {
-        dbg!(self.player.aircraft().controls());
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
-        self.missiles.iter_mut().for_each(|m| {
-            m.update();
-        });
+        self.enemies.update();
+        self.update_missiles();
         self.missiles
-            .retain(|m| !matches!(m.termination_timer, Some(0)));
+            .retain(|m| !matches!(m.guidance, GuidanceStatus::None(0)));
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
@@ -154,7 +154,7 @@ impl Game {
                 let deg = direction.angle(player_front).0.to_degrees();
                 (tuple.0, (deg, enemy))
             })
-            .filter(|&(_, (deg, _))| deg < 5.)
+            .filter(|&(_, (deg, _))| deg < 20.)
             .collect_vec();
         if targeted.is_empty() {
             return None;
@@ -299,19 +299,27 @@ impl Game {
         if self.last_launch_time + MISSILE_COOLDOWN > self.glfw.get_time() {
             return;
         }
-        let target: Option<EnemyID> = self.targeted_enemy_id();
-        self.spawn_missile(target);
-        self.last_launch_time = self.glfw.get_time();
-        warn!("Spawned a missile, targeting {target:?}!");
+        if let Some(id) = self.targeted_enemy_id() {
+            let enemy = self.enemies.get_by_id(id);
+            let missile = Missile::new(self.player.camera(), enemy);
+            self.missiles.push(missile);
+            self.last_launch_time = self.glfw.get_time();
+        }
     }
 
     /// Give the missiles a reference to the Enemy they are currently
     /// targeting so they can mutate their state accordingly
-    pub fn update_missile(&mut self) {}
-
-    /// Create a new missile and add it to the self.missiles vector
-    pub fn spawn_missile(&mut self, enemy: Option<EnemyID>) {
-        let missile = Missile::new(self.player.camera(), enemy);
-        self.missiles.push(missile);
+    pub fn update_missiles(&mut self) {
+        self.missiles.iter_mut().for_each(|m| {
+            let enemy = m
+                .target()
+                .and_then(|id| self.enemies.get_mut_by_id(id))
+                .or_else(|| None);
+            
+            let message = m.update(enemy.as_deref());
+            // match message {
+            //     _ => todo!()
+            // }
+        })
     }
 }

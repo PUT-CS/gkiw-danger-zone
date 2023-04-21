@@ -1,40 +1,45 @@
 use super::drawable::Drawable;
+use super::enemy::Enemy;
+use super::missile_guidance::{GuidanceData, GuidanceStatus};
 use crate::game::flight::steerable::Steerable;
+use crate::DELTA_TIME;
 use crate::{cg::camera::Camera, cg::model::Model};
-use cgmath::{Deg, EuclideanSpace, InnerSpace, Matrix3, Matrix4, Quaternion, SquareMatrix};
+use cgmath::{
+    EuclideanSpace, InnerSpace, Matrix3, MetricSpace, Point3, Quaternion, Rotation3, SquareMatrix,
+    Vector3,
+};
 use log::warn;
-use std::fmt::Debug;
+use vek::{QuadraticBezier3, Vec3};
 
 pub type EnemyID = u32;
-
-/// Number of frames after which a missile without a target gets deleted
-const TERMINATION_TIME: u32 = 5000;
 
 pub enum MissileMessage {
     LostLock,
     Terminated,
     None,
     HitEnemy(EnemyID),
+    RegainedLock(EnemyID),
+    BeganTermination,
 }
- 
+
 /// Struct representing a missile fired by the player
 /// The missile only knows what ID the Enemy it targets has.
 /// Each frame it receives a reference to the enemy it targets so it can update its state.
 pub struct Missile {
-    target: Option<EnemyID>,
     pub model: Model,
-    /// An optional integer representing the number of ticks left until termination.
-    /// Set to TERMINATION_TIME by calling `terminate` on a Missile instance.
-    pub termination_timer: Option<u32>,
+    pub guidance: GuidanceStatus,
 }
 
 impl Missile {
     /// Create a new missile.
     /// Uses player's position to spawn the missile at the right coordinates.
-    pub fn new(camera: &Camera, target: Option<EnemyID>) -> Self {
+    pub fn new(camera: &Camera, target: Option<&Enemy>) -> Self {
         let mut model = Model::new("resources/objects/cockpit/cockpit.obj");
 
-        let m = camera.view_matrix().invert().expect("Invertible view matrix");
+        let m = camera
+            .view_matrix()
+            .invert()
+            .expect("Invertible view matrix");
         let rot = Matrix3::from([
             [m.x.x, m.x.y, m.x.z],
             [m.y.x, m.y.y, m.y.z],
@@ -44,75 +49,103 @@ impl Missile {
         model.apply_quaternion(quat);
 
         let pos = camera.position().to_vec();
-        model.translate(pos);
+        model.set_translation(pos);
 
-        Self {
-            target,
-            model,
-            termination_timer: None,
-        }
+        let guidance = if let Some(enemy) = target {
+            let target = enemy.id();
+            let start = model.position_vek();
+            let end = enemy.aircraft().model().position_vek();
+            let mid = {
+                // Select a point in front of the launching aircraft to simulate the missile accelerating
+                let mid = model.position() + camera.front * 50.;
+                Vec3::from([mid.x, mid.y, mid.z])
+            };
+            let points = Vec3::from([start, mid, end]);
+            let bezier = QuadraticBezier3::from(points);
+            GuidanceStatus::new(target, bezier)
+        } else {
+            GuidanceStatus::none()
+        };
+
+        Self { model, guidance }
     }
 
     /// Report on what the missile is doing this frame
     /// based on the information from the Enemy reference
-    //pub fn update(&mut self, target_info: &Enemy) -> MissileMessage {
-    pub fn update(&mut self) -> MissileMessage {
-        self.model.forward(0.1);
-        
-        // Missile is already in termination countdown
-        if let Some(timer) = self.termination_timer {
-            if timer == 0 {
-                warn!("Terminated a missile!");
-                return MissileMessage::Terminated;
-            }
-            self.termination_timer = Some(timer - 1);
-            return MissileMessage::None;
-        }
-
-        // Missile has just lost the target
-        if self.target.is_none() {
-            warn!("Starting termination");
-            self.begin_terminate();
-            return MissileMessage::None;
-        }
-        
-        MissileMessage::None
+    pub fn update(&mut self, enemy: Option<&Enemy>) -> Option<MissileMessage> {
+        return match (enemy, self.guidance) {
+            (Some(e), GuidanceStatus::Active(_)) => {
+                self.try_hit_target(e).or_else(|| self.guide_towards(e))
+            },
+            (None, GuidanceStatus::Active(_)) => self.begin_terminate(),
+            (_, GuidanceStatus::None(timer)) => self.termination_countdown(timer),
+            _ => todo!(),
+        };
     }
 
-    /// Missile is no longer pointing close enough to the Enemy it targets
-    pub fn lose_lock(&mut self) {
-        assert!(self.target().is_some());
-        assert!(self.termination_timer.is_none());
-        self.target = None;
+    /// See if the missile should hit, return A message containing the enemy ID if it did.
+    fn try_hit_target(&mut self, target: &Enemy) -> Option<MissileMessage> {
+        if self.position().distance(target.position()) < 2. {
+            warn!("MISSILE HIT");
+            self.guidance = GuidanceStatus::none();
+            return Some(MissileMessage::HitEnemy(target.id()));
+        }
+        None
     }
 
-    /// Only possible if the missile is not targeting an Enemy,
-    /// but one flew in front of it close enough
-    pub fn regain_lock(&mut self) {
-        assert!(matches!(self.termination_timer, Some(_)));
-        assert!(self.target.is_none());
-        todo!()
+    /// Move the missile towards its target along the bezier curve contained in GuidanceData
+    fn guide_towards(&mut self, target: &Enemy) -> Option<MissileMessage> {
+        assert!(matches!(self.guidance, GuidanceStatus::Active(_)));
+        
+        let guidance_data = if let GuidanceStatus::Active(data) = &mut self.guidance {
+            data
+        } else {
+            unreachable!()
+        };
+
+        // Progress along the curve
+        let t = {
+            let bezier = guidance_data.bezier;
+            let t = 0.0001;
+            let v1 = (2. * bezier.start) - (4. * bezier.ctrl) + (2. * bezier.end);
+            let v2 = (-2. * bezier.start) + (2. * bezier.ctrl);
+            let l = unsafe { DELTA_TIME };
+            t + (l / (t * v1 + v2).magnitude())
+        };
+        guidance_data.progress += t;
+        
+        let new_point = {
+            let eval = guidance_data.bezier.evaluate(guidance_data.progress);
+            Vector3::from([eval.x, eval.y, eval.z])
+        };
+        
+        guidance_data.bezier.end = target.aircraft().model().position_vek();
+        self.model.set_translation(new_point);
+        
+        None
     }
 
     /// Missile has flown without a target for too long, start the countdown
-    pub fn begin_terminate(&mut self) {
-        assert!(self.target.is_none());
-        assert!(self.termination_timer.is_none());
-        self.termination_timer = Some(TERMINATION_TIME);
+    pub fn begin_terminate(&mut self) -> Option<MissileMessage> {
+        self.guidance = GuidanceStatus::none();
+        Some(MissileMessage::BeganTermination)
+    }
+
+    /// Decrement the termination countdown
+    fn termination_countdown(&mut self, timer: u32) -> Option<MissileMessage> {
+        self.guidance = GuidanceStatus::None(timer - 1);
+        None
     }
 
     pub fn target(&self) -> Option<EnemyID> {
-        self.target
+        match &self.guidance {
+            GuidanceStatus::None(_) => None,
+            GuidanceStatus::Active(data) => Some(data.target_id),
+        }
     }
-}
 
-impl Debug for Missile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Missile: {:?}, {:?}",
-            self.target, self.termination_timer
-        )
+    pub fn position(&self) -> Point3<f32> {
+        self.model.position()
     }
 }
 
@@ -121,3 +154,4 @@ impl Drawable for Missile {
         self.model.draw(shader);
     }
 }
+

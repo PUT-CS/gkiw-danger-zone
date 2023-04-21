@@ -66,3 +66,18 @@ macro_rules! key_pressed {
         }
     };
 }
+
+#[macro_export]
+macro_rules! missile_move {
+    ($method:ident, $neg:expr) => {
+        //Box::new(|m: &mut Missile| {
+            //println!("Called {}, {}", stringify!($method), ($neg as f32).signum());
+            //m.$method(($neg as f32).signum() * DEGS_PER_FRAME * unsafe { DELTA_TIME })
+        //})
+        Box::new(
+            |vec: Vector3<f32>| {
+                0.1
+            }
+        )
+    };
+}
