@@ -36,9 +36,17 @@ impl Enemies {
         let mut id_gen = ID_GENERATOR.lock().expect("Lock IDGenerator mutex");
         Some(
             (0..diff)
-                .map(|_| (id_gen.get_new_id_of(IDKind::Enemy), Enemy::new(Mig21)))
+                .map(|_| {
+                    let id = id_gen.get_new_id_of(IDKind::Enemy);
+                    (id, Enemy::new(id, Mig21))
+                })
                 .collect(),
         )
+    }
+
+    pub fn update(&mut self) {
+        self.map.iter_mut().for_each(|e| e.1.aircraft_mut().model_mut().forward(0.01));
+        self.map.iter_mut().for_each(|e| e.1.aircraft_mut().model_mut().pitch(0.02));
     }
 
     pub fn respawn_enemies(&mut self) {

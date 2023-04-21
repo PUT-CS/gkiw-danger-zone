@@ -1,5 +1,3 @@
-use std::{borrow::BorrowMut, sync::Mutex};
-
 use cg::shader::Shader;
 use glfw::Context;
 extern crate glfw;

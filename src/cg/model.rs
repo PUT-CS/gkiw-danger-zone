@@ -26,6 +26,7 @@ use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
 use tobj;
+use vek::Vec3;
 
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
@@ -179,17 +180,33 @@ impl Model {
     /// Get the model's position in world coordinates
     pub fn position(&self) -> Point3 {
         let m = self.build_model_matrix();
-        Point3::from_vec(vec3(
-            m.w.x,
-            m.w.y,
-            m.w.z,
-        ))
+        Point3::from_vec(vec3(m.w.x, m.w.y, m.w.z))
+    }
+
+    /// Get the model's position in world coordinates for use with `vek` and bezier curve calculations in missile.rs
+    pub fn position_vek(&self) -> Vec3<f32> {
+        let m = self.build_model_matrix();
+        Vec3::from([m.w.x, m.w.y, m.w.z])
     }
 
     pub fn front(&self) -> Vector3 {
         self.orientation.rotate_vector(*VEC_FRONT).normalize()
     }
+    
+    pub fn front_vek(&self) -> Vec3<f32> {
+        let f = self.front();
+        Vec3::from([f.x, f.y, f.z])
+    }
 
+    pub fn up(&self) -> Vector3 {
+        self.orientation.rotate_vector(*VEC_UP).normalize()
+    }
+    
+    pub fn up_vek(&self) -> Vec3<f32> {
+        let u = self.up();
+        Vec3::from([u.x, u.y, u.z])
+    }
+    
     /// Scale the model based on its current scale.
     /// For example: scaling by 0.5 and then by 2.0 restores original size
     pub fn scale(&mut self, scale: f32) -> &mut Self {
@@ -203,7 +220,7 @@ impl Model {
         self
     }
 
-    pub fn translate(&mut self, t: Vector3) -> &mut Self {
+    pub fn set_translation(&mut self, t: Vector3) -> &mut Self {
         self.transformation.translation = t;
         self
     }
@@ -215,8 +232,12 @@ impl Model {
 
     /// Use this cautiously!
     pub fn apply_quaternion(&mut self, quaternion: Quaternion<f32>) {
-        warn!("Use of Model::apply_quaternion");
         self.orientation = self.orientation * quaternion;
+    }
+
+    /// Use this cautiously. Intended for use with missile guidance
+    pub fn set_orientation(&mut self, quaternion: Quaternion<f32>) {
+        self.orientation = quaternion;
     }
 
     // pub fn model_matrix(&self) -> Matrix4 {
