@@ -69,25 +69,25 @@ impl Player {
     pub fn apply_controls(&mut self) {
         let delta_time = unsafe { DELTA_TIME };
         let c = self.aircraft.controls().clone();
-        self.camera_mut().pitch(c.pitch_bias() * delta_time);
-        self.camera_mut().yaw(c.yaw_bias() * delta_time);
-        self.camera_mut().roll(c.roll_bias() * delta_time);
-        self.camera_mut().forward(c.throttle() * delta_time);
+        // self.camera_mut().pitch(c.pitch_bias() * delta_time);
+        // self.camera_mut().yaw(c.yaw_bias() * delta_time);
+        // self.camera_mut().roll(c.roll_bias() * delta_time);
+        // self.camera_mut().forward(c.throttle() * delta_time);
 
         // let model = self.aircraft_mut().model_mut();
 
-        // model.pitch(controls.pitch_bias() * delta_time);
-        // model.yaw(controls.yaw_bias() * delta_time);
-        // model.roll(controls.roll_bias() * delta_time);
-        // model.forward(controls.throttle());
+        // model.pitch(c.pitch_bias() * delta_time);
+        // model.yaw(c.yaw_bias() * delta_time);
+        // model.roll(c.roll_bias() * delta_time);
+        // model.forward(c.throttle());
 
-        // //Third person camera (not looking really good now)
-        // self.camera.position = self.aircraft().model().position()
-        //     + (self
-        //         .aircraft()
-        //         .model()
-        //         .orientation
-        //         .rotate_vector(*VEC_FRONT - vec3(-0.05, -0.5, -5.0)))
+        //Third person camera (not looking really good now)
+        self.camera.position = self.aircraft().model().position()
+            + (self
+                .aircraft()
+                .model()
+                .orientation
+                .rotate_vector(*VEC_FRONT - vec3(-0.05, -0.5, -5.0)))
     }
 
     /// Handle key events meant for player controls.

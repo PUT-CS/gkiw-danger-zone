@@ -121,7 +121,8 @@ impl Game {
 
     /// Compute new positions of all game objects based on input and state of the game
     pub fn update(&mut self) {
-        dbg!(self.player.aircraft().controls());
+        //dbg!(self.player.aircraft().controls());
+	
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
@@ -173,6 +174,15 @@ impl Game {
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
+        // Drawing game objects starts here
+        // self.terrain.draw(&shader);
+        self.skybox.draw(&shader);
+        // self.enemies.draw(&shader);
+        // self.player.draw(shader);
+        // self.missiles.iter_mut().for_each(|m| {
+        //     m.draw(shader);
+        // });
+
 	//setup particle shaders
 	particle_shader.use_program();
 
@@ -180,16 +190,10 @@ impl Game {
             c_str!("projection"),
             &self.player.camera().projection_matrix(),
         );
-        
-        // Drawing game objects starts here
-        self.terrain.draw(&shader);
-        self.skybox.draw(&shader);
-        self.enemies.draw(&shader);
-        self.player.draw(shader);
-        self.missiles.iter_mut().for_each(|m| {
-            m.draw(shader);
-        });
-	
+	particle_shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
+	particle_shader.set_mat4(c_str!("model"), &Matrix4::identity());
+	self.player.aircraft_mut().model_mut().particle_generator.enable();
+        self.player.aircraft_mut().model_mut().draw_particles(particle_shader);
         // let mut model_matrix = self.player.cockpit.model_matrix();
         // let time = self.glfw.get_time() as f32 * 2.0;
         // model_matrix = model_matrix

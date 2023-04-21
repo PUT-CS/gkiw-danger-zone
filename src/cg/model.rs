@@ -61,7 +61,7 @@ impl Default for Model {
             transformation: Transformation::default(),
             orientation: Quaternion::from_angle_x(Deg(0.)),
             directory: String::new(),
-	    particle_generator: ParticleGenerator::new(500, Vector4::new(1., 1., 1., 1.)),
+	    particle_generator: ParticleGenerator::new(1000, Vector4::new(1., 0., 0., 1.), Vector3::new(0., 2., 0.,)),
         }
     }
 }
@@ -167,10 +167,9 @@ impl Model {
 
     /// Construct a model matrix based on model's orientation, scale and translation
     fn build_model_matrix(&self) -> Matrix4 {
-        let m = Matrix4::identity();
-        let s = m * Matrix4::from_scale(self.transformation.scale);
-        let t = m * Matrix4::from_translation(self.transformation.translation);
-        let r = m * Matrix4::from(self.orientation);
+        let s = Matrix4::from_scale(self.transformation.scale);
+        let t = Matrix4::from_translation(self.transformation.translation);
+        let r = Matrix4::from(self.orientation);
         // Why is the order like this?
         // Those operations apply right-to-left, so first, when the model
         // is at [0,0,0], we rotate, then translate to the desired point
@@ -190,6 +189,13 @@ impl Model {
         ))
     }
 
+    pub unsafe fn draw_particles(&mut self, shader: &Shader) {
+	if self.particle_generator.enabled == true {
+	    self.particle_generator.update_particles(self.position(), self.particle_generator.offset, 4);
+	}
+	self.particle_generator.draw(shader);
+    }
+    
     pub fn front(&self) -> Vector3 {
         self.orientation.rotate_vector(*VEC_FRONT).normalize()
     }

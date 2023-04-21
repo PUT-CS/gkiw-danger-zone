@@ -1,6 +1,6 @@
 use std::{ffi::c_void, ffi::CStr, ptr};
 
-use cgmath::{Vector3, Vector4, Zero};
+use cgmath::{Vector3, Vector4, Zero, Point3, EuclideanSpace};
 use rand::{thread_rng, Rng};
 
 use crate::c_str;
@@ -10,7 +10,7 @@ use crate::cg::shader::Shader;
 
 #[derive(Clone, Debug)]
 pub struct Particle {
-    postion: Vector3<f32>,
+    postion: Point3<f32>,
     velocity: Vector3<f32>,
     color: Vector4<f32>,
     life: f32,
@@ -20,15 +20,17 @@ pub struct Particle {
 pub struct ParticleGenerator {
     particles: Vec<Particle>,
     color: Vector4<f32>,
+    pub offset: Vector3<f32>,
     last_revived_particle_idx: usize,
     pub vao: u32,
     vbo: u32,
+    pub enabled: bool,
 }
 
 impl Particle {
     pub fn new(color: Vector4<f32>) -> Self {
         Self {
-            postion: Vector3::zero(),
+            postion: Point3::from([0.; 3]),
             velocity: Vector3::zero(),
             color,
             life: 0.,
@@ -38,10 +40,11 @@ impl Particle {
 
 impl Drawable for ParticleGenerator {
     unsafe fn draw(&self, shader: &Shader) {
+	dbg!("");
 	gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
 	self.particles.iter().for_each(|p|{
 	    if p.life > 0. {
-		shader.set_vector3(c_str!("offset"), &p.postion);
+		shader.set_vector3(c_str!("offset"), &p.postion.to_vec());
 		shader.set_vector4(c_str!("color"), &p.color);
 		// there should be texture bind!
 		gl::BindVertexArray(self.vao);
@@ -55,22 +58,28 @@ impl Drawable for ParticleGenerator {
 }
 
 impl ParticleGenerator {
-    pub fn new(size: usize, color: Vector4<f32>) -> Self {
+    pub fn new(size: usize, color: Vector4<f32>, offset: Vector3<f32>) -> Self {
         let mut particles = Vec::with_capacity(size);
         particles.resize_with(size, || Particle::new(color));
         let mut generator = Self {
             particles,
             color,
+	    offset,
             last_revived_particle_idx: 0,
             vao: u32::MAX,
 	    vbo: u32::MAX,
+	    enabled: false
         };
 	generator.init();
 	generator
     }
 
+    pub fn enable(&mut self) {
+	self.enabled = true;
+    }
+
     pub fn init(&mut self) {
-        let mut particle_quad = vec![
+        let particle_quad = vec![
             0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
             1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
         ];
@@ -105,24 +114,25 @@ impl ParticleGenerator {
         }
         0
     }
-
+    
     pub fn respawn_particle(
         &mut self,
-        position: Vector3<f32>,
+        position: Point3<f32>,
         offset: Vector3<f32>,
         first_dead: usize,
     ) {
-        let rand = thread_rng().gen_range(-50, 50) as f32 / 10.0;
+	let first_dead = &mut self.particles[first_dead];
+        let rand = thread_rng().gen_range(-1., 1.);
         let random = Vector3::new(rand, rand, rand);
-        self.particles[first_dead].postion = position + random + offset;
-        self.particles[first_dead].color = self.color;
-        self.particles[first_dead].life = 1.;
-        self.particles[first_dead].velocity = position * 0.3;
+        first_dead.postion = position + random + offset;
+        first_dead.color = self.color;
+        first_dead.life = 1.;
+        first_dead.velocity = position.to_vec() * 0.3;
     }
 
     pub fn update_particles(
         &mut self,
-        position: Vector3<f32>,
+        position: Point3<f32>,
         offset: Vector3<f32>,
         number_new_particles: usize,
     ) {
