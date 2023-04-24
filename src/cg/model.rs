@@ -45,7 +45,6 @@ pub struct Model {
     directory: String,
     pub transformation: Transformation,
     pub orientation: Quaternion<f32>,
-    pub particle_generator: ParticleGenerator,
 }
 
 impl Default for Model {
@@ -61,7 +60,6 @@ impl Default for Model {
             transformation: Transformation::default(),
             orientation: Quaternion::from_angle_x(Deg(0.)),
             directory: String::new(),
-	    particle_generator: ParticleGenerator::new(1000, Vector4::new(1., 0., 0., 1.), Vector3::new(0., 2., 0.,)),
         }
     }
 }
@@ -187,13 +185,6 @@ impl Model {
             m.w.y,
             m.w.z,
         ))
-    }
-
-    pub unsafe fn draw_particles(&mut self, shader: &Shader) {
-	if self.particle_generator.enabled == true {
-	    self.particle_generator.update_particles(self.position(), self.particle_generator.offset, 4);
-	}
-	self.particle_generator.draw(shader);
     }
     
     pub fn front(&self) -> Vector3 {

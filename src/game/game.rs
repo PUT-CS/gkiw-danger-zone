@@ -10,6 +10,7 @@ extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
 use super::missile::EnemyID;
+use super::particle_generation::ParticleGeneration;
 use super::terrain::Terrain;
 use super::{missile::Missile, player::Player};
 use crate::c_str;
@@ -122,10 +123,14 @@ impl Game {
     /// Compute new positions of all game objects based on input and state of the game
     pub fn update(&mut self) {
         //dbg!(self.player.aircraft().controls());
-	
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
+	self.enemies.map.values_mut().for_each(|e| {
+	    let position = e.aircraft().model().position();
+            e.aircraft_mut().particle_generator_mut().update_particles(position, Vector3::new(0., 1., 0.), 2);
+        });
+
         self.missiles.iter_mut().for_each(|m| {
             m.update();
         });
@@ -164,7 +169,7 @@ impl Game {
         Some(*targeted[0].0)
     }
 
-    pub unsafe fn draw(&mut self, shader: &Shader, particle_shader: &Shader) {
+    pub unsafe fn draw(&mut self, shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
 
@@ -177,23 +182,15 @@ impl Game {
         // Drawing game objects starts here
         // self.terrain.draw(&shader);
         self.skybox.draw(&shader);
-        // self.enemies.draw(&shader);
+	self.enemies.map.values_mut().for_each(|e| {
+            e.aircraft.draw(shader);
+	    e.aircraft_mut().draw_particles(shader);
+        });
         // self.player.draw(shader);
         // self.missiles.iter_mut().for_each(|m| {
         //     m.draw(shader);
         // });
 
-	//setup particle shaders
-	particle_shader.use_program();
-
-        particle_shader.set_mat4(
-            c_str!("projection"),
-            &self.player.camera().projection_matrix(),
-        );
-	particle_shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
-	particle_shader.set_mat4(c_str!("model"), &Matrix4::identity());
-	self.player.aircraft_mut().model_mut().particle_generator.enable();
-        self.player.aircraft_mut().model_mut().draw_particles(particle_shader);
         // let mut model_matrix = self.player.cockpit.model_matrix();
         // let time = self.glfw.get_time() as f32 * 2.0;
         // model_matrix = model_matrix

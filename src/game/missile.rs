@@ -1,4 +1,5 @@
 use super::drawable::Drawable;
+use super::modeled::Modeled;
 use crate::game::flight::steerable::Steerable;
 use crate::{cg::camera::Camera, cg::model::Model};
 use cgmath::{Deg, EuclideanSpace, InnerSpace, Matrix3, Matrix4, Quaternion, SquareMatrix};
@@ -119,5 +120,14 @@ impl Debug for Missile {
 impl Drawable for Missile {
     unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
         self.model.draw(shader);
+    }
+}
+
+impl Modeled for Missile {
+    fn model(&self) -> &Model {
+	&self.model
+    }
+    fn model_mut(&mut self) -> &mut Model {
+	&mut self.model
     }
 }

@@ -1,30 +1,27 @@
-use std::{ffi::c_void, ffi::CStr, ptr};
-
-use cgmath::{Vector3, Vector4, Zero, Point3, EuclideanSpace};
+use cgmath::{EuclideanSpace, Point3, Vector3, Vector4, Zero};
 use rand::{thread_rng, Rng};
 
-use crate::c_str;
+use crate::game::modeled::Modeled;
 use crate::{game::drawable::Drawable, DELTA_TIME};
 
-use crate::cg::shader::Shader;
+use super::model::Model;
 
 #[derive(Clone, Debug)]
 pub struct Particle {
     postion: Point3<f32>,
     velocity: Vector3<f32>,
     color: Vector4<f32>,
-    life: f32,
+    pub life: f32,
 }
 
 #[derive(Clone, Debug)]
 pub struct ParticleGenerator {
-    particles: Vec<Particle>,
-    color: Vector4<f32>,
+    pub particles: Vec<Particle>,
+    pub color: Vector4<f32>,
     pub offset: Vector3<f32>,
     last_revived_particle_idx: usize,
-    pub vao: u32,
-    vbo: u32,
     pub enabled: bool,
+    pub model: Model,
 }
 
 impl Particle {
@@ -39,64 +36,37 @@ impl Particle {
 }
 
 impl Drawable for ParticleGenerator {
-    unsafe fn draw(&self, shader: &Shader) {
-	dbg!("");
-	gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
-	self.particles.iter().for_each(|p|{
-	    if p.life > 0. {
-		shader.set_vector3(c_str!("offset"), &p.postion.to_vec());
-		shader.set_vector4(c_str!("color"), &p.color);
-		// there should be texture bind!
-		gl::BindVertexArray(self.vao);
-		gl::DrawArrays(gl::TRIANGLES, 0, 6);
-		gl::BindVertexArray(0); 
-	    }
-	});
-	gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+    unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
+	self.model().draw(shader);
     }
-    
+}
+
+impl Modeled for ParticleGenerator {
+    fn model(&self) -> &Model {
+	&self.model
+    }
+    fn model_mut(&mut self) -> &mut Model {
+	&mut self.model
+    }
 }
 
 impl ParticleGenerator {
-    pub fn new(size: usize, color: Vector4<f32>, offset: Vector3<f32>) -> Self {
+    pub fn new(size: usize, color: Vector4<f32>, offset: Vector3<f32>, model: Model) -> Self {
         let mut particles = Vec::with_capacity(size);
         particles.resize_with(size, || Particle::new(color));
-        let mut generator = Self {
+        let generator = Self {
             particles,
             color,
-	    offset,
+            offset,
             last_revived_particle_idx: 0,
-            vao: u32::MAX,
-	    vbo: u32::MAX,
-	    enabled: false
+            enabled: false,
+            model,
         };
-	generator.init();
-	generator
+        generator
     }
 
     pub fn enable(&mut self) {
-	self.enabled = true;
-    }
-
-    pub fn init(&mut self) {
-        let particle_quad = vec![
-            0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
-        ];
-        unsafe {
-	    let data: *const c_void;
-	    data = particle_quad.as_ptr() as *const c_void;
-            gl::GenVertexArrays(1, &mut self.vao);
-	    gl::GenBuffers(1, &mut self.vbo);
-	    gl::BindVertexArray(self.vao);
-	    //fill mesh buffer
-	    gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
-	    gl::BufferData(gl::ARRAY_BUFFER, 96, data, gl::STATIC_DRAW);
-	    //set mesh attributes
-	    gl::EnableVertexAttribArray(0);
-	    gl::VertexAttribPointer(0, 4, gl::FLOAT, gl::FALSE, 16, ptr::null() as *const c_void);
-	    gl::BindVertexArray(0);
-        }
+        self.enabled = true;
     }
 
     pub fn first_dead_particle(&self) -> usize {
@@ -114,14 +84,14 @@ impl ParticleGenerator {
         }
         0
     }
-    
+
     pub fn respawn_particle(
         &mut self,
         position: Point3<f32>,
         offset: Vector3<f32>,
         first_dead: usize,
     ) {
-	let first_dead = &mut self.particles[first_dead];
+        let first_dead = &mut self.particles[first_dead];
         let rand = thread_rng().gen_range(-1., 1.);
         let random = Vector3::new(rand, rand, rand);
         first_dead.postion = position + random + offset;
@@ -145,6 +115,7 @@ impl ParticleGenerator {
             p.life -= delta_time;
             if p.life > 0. {
                 p.postion -= p.velocity * delta_time;
+		dbg!(&p.postion);
                 p.color.w -= 2.5 * delta_time;
             }
         })

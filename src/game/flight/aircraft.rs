@@ -1,6 +1,11 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
-use crate::{cg::{camera::ControlSurfaces, model::Model}, gen_ref_getters, DELTA_TIME};
-use cgmath::{Vector3, Deg};
+use crate::{
+    cg::{camera::ControlSurfaces, model::Model, particles::ParticleGenerator},
+    game::{particle_generation::ParticleGeneration, drawable::Drawable, modeled::Modeled},
+    gen_ref_getters, DELTA_TIME, c_str,
+};
+use std::ffi::CStr;
+use cgmath::{Deg, Vector3, Vector4, EuclideanSpace};
 use lazy_static::lazy_static;
 use log::info;
 use std::collections::HashMap;
@@ -17,6 +22,7 @@ pub struct Aircraft {
     spec: AircraftSpec,
     controls: Controls,
     kind: AircraftKind,
+    particle_generator: ParticleGenerator,
 }
 
 gen_ref_getters! {
@@ -42,6 +48,30 @@ lazy_static! {
         HashMap::from([(Mig21, "resources/objects/mig21/mig21.obj")]);
 }
 
+impl ParticleGeneration for Aircraft {
+    fn particle_generator(&self) -> & ParticleGenerator {
+	&self.particle_generator
+    }
+    fn particle_generator_mut(&mut self) -> &mut ParticleGenerator {
+	&mut self.particle_generator
+    }
+}
+
+impl Drawable for Aircraft {
+    unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
+	self.model().draw(shader);
+    }
+}
+
+impl Modeled for Aircraft {
+    fn model(&self) -> &Model {
+	&self.model
+    }
+    fn model_mut(&mut self) -> &mut Model {
+	&mut self.model
+    }
+}
+
 impl Aircraft {
     pub fn new(kind: AircraftKind) -> Self {
         info!("Creating new Aircraft of kind : {kind:?}");
@@ -53,8 +83,14 @@ impl Aircraft {
                 .get(&kind)
                 .expect("Blueprint not found for kind")
                 .to_owned(),
-            kind,
             controls: Controls::default(),
+            kind,
+            particle_generator: ParticleGenerator::new(
+                500,
+                Vector4::new(1., 0., 0., 1.),
+                Vector3::new(0., 1., 0.),
+                Model::new("resources/objects/mig21/mig21.obj"),
+            ),
         }
     }
     pub fn controls_mut(&mut self) -> &mut Controls {
@@ -81,18 +117,19 @@ impl Aircraft {
             self.controls_mut().apply_roll_decay()
         }
     }
-    
+
     pub fn throttle_up(&mut self) {
-        let delta_time = unsafe {DELTA_TIME};
+        let delta_time = unsafe { DELTA_TIME };
         *self.controls_mut().throttle_mut() =
-            (self.controls().throttle() + delta_time ).clamp(1., 10.)
+            (self.controls().throttle() + delta_time).clamp(1., 10.)
     }
-    
+
     pub fn throttle_down(&mut self) {
-        let delta_time = unsafe {DELTA_TIME};
+        let delta_time = unsafe { DELTA_TIME };
         *self.controls_mut().throttle_mut() =
             (self.controls().throttle() - delta_time).clamp(1., 10.)
     }
+
 }
 /// This implementation handles mutating the control parameters of the aircraft.
 /// It does not modify the actual model of the plane, only sets values
@@ -109,13 +146,13 @@ impl Steerable for Aircraft {
     fn yaw(&mut self, amount: f32) {
         *self.controls_mut().yaw_bias_mut() = (self.controls().yaw_bias()
             + self.spec().yaw_rate() * amount.signum() * amount.abs() * STEERING_SENSITIVITY)
-        .clamp(-MAX_YAW_BIAS, MAX_YAW_BIAS);
+            .clamp(-MAX_YAW_BIAS, MAX_YAW_BIAS);
     }
     /// Mutate the roll flaps bias
     fn roll(&mut self, amount: f32) {
         *self.controls_mut().roll_bias_mut() = (self.controls().roll_bias()
             + self.spec().roll_rate() * amount.signum() * amount.abs() * STEERING_SENSITIVITY)
-        .clamp(-MAX_ROLL_BIAS, MAX_ROLL_BIAS);
+            .clamp(-MAX_ROLL_BIAS, MAX_ROLL_BIAS);
     }
     /// Mutate the throttle
     fn forward(&mut self, amount: f32) {
