@@ -1,15 +1,16 @@
-use crate::cg::particles;
+use crate::audio::audio_manager::{AudioManager, AudioMessage};
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
 use log::{info, warn};
 use rayon::ThreadPoolBuilder;
-use std::sync::mpsc::Receiver;
+use rayon::iter::IntoParallelRefIterator;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread::JoinHandle;
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
-use super::enemy::Enemy;
 use super::missile::EnemyID;
 use super::missile_guidance::GuidanceStatus;
 use super::terrain::Terrain;
@@ -21,7 +22,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3};
+use cgmath::{vec3, Deg, InnerSpace, Vector3};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -43,11 +44,14 @@ pub struct Game {
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
+    audio_sender: Sender<AudioMessage>,
 }
 
 impl Game {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
+
 
         log4rs::init_file("log_config.yaml", Default::default()).unwrap();
         info!("Initialized log4rs");
@@ -89,6 +93,9 @@ impl Game {
             .build_global()
             .expect("Configure global rayon threadpool");
 
+        let (tx, rx) = mpsc::channel::<AudioMessage>();
+        rayon::spawn(move || {AudioManager::run(rx);});
+
         let mut terrain = Terrain::default();
         terrain
             .model
@@ -118,6 +125,7 @@ impl Game {
             glfw,
             window,
             events,
+            audio_sender: tx,
         }
     }
 
@@ -315,11 +323,15 @@ impl Game {
                 .target()
                 .and_then(|id| self.enemies.get_mut_by_id(id))
                 .or_else(|| None);
-            
+
             let message = m.update(enemy.as_deref());
             // match message {
             //     _ => todo!()
             // }
         })
+    }
+
+    pub fn exit_hook(&mut self) {
+        self.audio_sender.send(AudioMessage::Exit).expect("Send Exit message to audio thread");
     }
 }
