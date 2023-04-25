@@ -1,24 +1,33 @@
-use cgmath::{num_traits::float, Vector2, Vector3, Vector4, Zero};
+use cgmath::{EuclideanSpace, Point3, Vector3, Vector4, Zero, InnerSpace};
 use rand::{thread_rng, Rng};
-// change all 0.1 to delta time when available!!!!
 
+use crate::game::modeled::Modeled;
+use crate::{game::drawable::Drawable, DELTA_TIME};
+
+use super::model::Model;
+
+#[derive(Clone, Debug)]
 pub struct Particle {
-    postion: Vector3<f32>,
+    pub position: Point3<f32>,
     velocity: Vector3<f32>,
     color: Vector4<f32>,
-    life: f32,
+    pub life: f32,
 }
 
+#[derive(Clone, Debug)]
 pub struct ParticleGenerator {
-    particles: Vec<Particle>,
-    color: Vector4<f32>,
+    pub particles: Vec<Particle>,
+    pub color: Vector4<f32>,
+    pub offset: f32,
     last_revived_particle_idx: usize,
+    pub enabled: bool,
+    pub model: Model,
 }
 
 impl Particle {
     pub fn new(color: Vector4<f32>) -> Self {
         Self {
-            postion: Vector3::zero(),
+            position: Point3::from([0.; 3]),
             velocity: Vector3::zero(),
             color,
             life: 0.,
@@ -26,15 +35,40 @@ impl Particle {
     }
 }
 
+impl Drawable for ParticleGenerator {
+    unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
+	self.model().draw(shader);
+    }
+}
+
+impl Modeled for ParticleGenerator {
+    fn model(&self) -> &Model {
+	&self.model
+    }
+    fn model_mut(&mut self) -> &mut Model {
+	&mut self.model
+    }
+}
+
 impl ParticleGenerator {
-    pub fn new(size: usize, color: Vector4<f32>) -> Self {
+    pub fn new(size: usize, color: Vector4<f32>,offset: f32) -> Self {
+	let mut model = Model::new("resources/objects/particle/particle.obj");
+	model.set_scale(0.1);
         let mut particles = Vec::with_capacity(size);
         particles.resize_with(size, || Particle::new(color));
-        Self {
+        let generator = Self {
             particles,
             color,
+            offset,
             last_revived_particle_idx: 0,
-        }
+            enabled: false,
+	    model
+        };
+        generator
+    }
+
+    pub fn enable(&mut self) {
+        self.enabled = true;
     }
 
     pub fn first_dead_particle(&self) -> usize {
@@ -55,34 +89,39 @@ impl ParticleGenerator {
 
     pub fn respawn_particle(
         &mut self,
-        position: Vector3<f32>,
-        offset: Vector3<f32>,
+        position: Point3<f32>,
         first_dead: usize,
+	front: Vector3<f32>,
     ) {
-        let rand = thread_rng().gen_range(-50, 50) as f32 / 10.0;
-        let random = Vector3::new(rand, rand, rand);
-        self.particles[first_dead].postion = position + random + offset;
-        self.particles[first_dead].color = self.color;
-        self.particles[first_dead].life = 1.;
-        self.particles[first_dead].velocity = position * 0.3;
+        let first_dead = &mut self.particles[first_dead];
+        let rand1 = thread_rng().gen_range(-0.1, 0.1);
+        let rand2 = thread_rng().gen_range(-0.1, 0.1);
+        let rand3 = thread_rng().gen_range(-0.1, 0.1);
+        let random = Vector3::new(rand1, rand2, rand3);
+	let offset = front * -1. *self.offset;
+        first_dead.position = position + random + offset;
+        first_dead.color = self.color;
+        first_dead.life = thread_rng().gen_range(3., 5.);
+        first_dead.velocity = (position.to_vec()).normalize();
     }
-    
+
     pub fn update_particles(
         &mut self,
-        position: Vector3<f32>,
-        offset: Vector3<f32>,
+        position: Point3<f32>,
         number_new_particles: usize,
+	front: Vector3<f32>,
     ) {
         for _ in 0..number_new_particles {
             let first_dead = self.first_dead_particle();
-            self.respawn_particle(position, offset, first_dead);
+            self.respawn_particle(position, first_dead, front);
         }
-	self.particles.iter_mut().for_each(|p|{
-	    p.life -= 0.1;
-	    if p.life > 0. {
-		p.postion -= p.velocity * 0.1;
-		p.color.w -= 2.5 * 0.1; 
-	    }
-	})
+        self.particles.iter_mut().for_each(|p| {
+            let delta_time = unsafe { DELTA_TIME };
+            p.life -= delta_time;
+            if p.life > 0. {
+                p.position -= p.velocity * delta_time;
+		p.color.w -= 2.5 * delta_time;
+            }
+        })
     }
 }

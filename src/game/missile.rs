@@ -1,11 +1,11 @@
 use super::drawable::Drawable;
 use super::enemy::Enemy;
-use super::missile_guidance::{GuidanceData, GuidanceStatus};
-use crate::game::flight::steerable::Steerable;
+use super::missile_guidance::GuidanceStatus;
+use super::modeled::Modeled;
 use crate::DELTA_TIME;
 use crate::{cg::camera::Camera, cg::model::Model};
 use cgmath::{
-    EuclideanSpace, InnerSpace, Matrix3, MetricSpace, Point3, Quaternion, Rotation3, SquareMatrix,
+    EuclideanSpace, Matrix3, MetricSpace, Point3, Quaternion, SquareMatrix,
     Vector3,
 };
 use log::warn;
@@ -106,7 +106,7 @@ impl Missile {
         // Progress along the curve
         let t = {
             let bezier = guidance_data.bezier;
-            let t = 0.0001;
+            let t = 0.001;
             let v1 = (2. * bezier.start) - (4. * bezier.ctrl) + (2. * bezier.end);
             let v2 = (-2. * bezier.start) + (2. * bezier.ctrl);
             let l = unsafe { DELTA_TIME };
@@ -152,6 +152,15 @@ impl Missile {
 impl Drawable for Missile {
     unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
         self.model.draw(shader);
+    }
+}
+
+impl Modeled for Missile {
+    fn model(&self) -> &Model {
+	&self.model
+    }
+    fn model_mut(&mut self) -> &mut Model {
+	&mut self.model
     }
 }
 

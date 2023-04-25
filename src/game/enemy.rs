@@ -1,22 +1,13 @@
 use cgmath::Point3;
-
 use super::flight::aircraft::{Aircraft, AircraftKind};
 use super::missile::EnemyID;
-use crate::cg::shader::Shader;
-use crate::game::drawable::Drawable;
 use crate::gen_ref_getters;
 
 /// Struct representing an enemy
 pub struct Enemy {
     id: u32,
-    aircraft: Aircraft,
+    pub aircraft: Aircraft,
     destroyed: bool,
-}
-
-impl Drawable for Enemy {
-    unsafe fn draw(&self, shader: &Shader) {
-        self.aircraft.model().draw(shader);
-    }
 }
 
 impl Enemy {

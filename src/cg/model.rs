@@ -1,6 +1,7 @@
 use super::consts::VEC_FRONT;
 use super::consts::VEC_RIGHT;
 use super::consts::VEC_UP;
+use super::particles::ParticleGenerator;
 use super::texture::Texture;
 use super::transformation::Transformation;
 use super::vertex::Vertex;
@@ -9,6 +10,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
 use crate::offset_of;
+use cgmath::Vector4;
 use cgmath::prelude::*;
 use cgmath::Deg;
 use cgmath::Quaternion;
@@ -164,17 +166,17 @@ impl Model {
 
     /// Construct a model matrix based on model's orientation, scale and translation
     fn build_model_matrix(&self) -> Matrix4 {
-        let m = Matrix4::identity();
-        let s = m * Matrix4::from_scale(self.transformation.scale);
-        let t = m * Matrix4::from_translation(self.transformation.translation);
-        let r = m * Matrix4::from(self.orientation);
+        let s = Matrix4::from_scale(self.transformation.scale);
+        let t = Matrix4::from_translation(self.transformation.translation);
+        let r = Matrix4::from(self.orientation);
         // Why is the order like this?
         // Those operations apply right-to-left, so first, when the model
         // is at [0,0,0], we rotate, then translate to the desired point
         // and only then we scale. Messing up this order results in
         // unexpected results like the model rotating around world origin
         // instead of its own local axis
-        s * t * r
+        //s * t * r
+	t * s * r
     }
 
     /// Get the model's position in world coordinates
@@ -188,7 +190,7 @@ impl Model {
         let m = self.build_model_matrix();
         Vec3::from([m.w.x, m.w.y, m.w.z])
     }
-
+    
     pub fn front(&self) -> Vector3 {
         self.orientation.rotate_vector(*VEC_FRONT).normalize()
     }

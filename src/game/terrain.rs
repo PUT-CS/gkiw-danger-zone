@@ -1,4 +1,4 @@
-use super::drawable::Drawable;
+use super::{drawable::Drawable, modeled::Modeled};
 use crate::cg::{model::Model, shader::Shader};
 use lazy_static::lazy_static;
 use log::{info, warn};
@@ -41,6 +41,15 @@ impl Default for Terrain {
 
 impl Drawable for Terrain {
     unsafe fn draw(&self, shader: &Shader) {
-        self.model.draw(shader);
+        self.model().draw(shader);
+    }
+}
+
+impl Modeled for Terrain {
+    fn model(&self) -> &Model {
+	&self.model
+    }
+    fn model_mut(&mut self) -> &mut Model {
+	&mut self.model
     }
 }

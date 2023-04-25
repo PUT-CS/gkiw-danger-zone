@@ -1,7 +1,6 @@
 use cgmath::{vec3, Rotation};
 
 use super::flight::aircraft::{Aircraft, AircraftKind};
-use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
 use crate::gen_ref_getters;
 use crate::{
@@ -9,7 +8,6 @@ use crate::{
         camera::{Camera, ControlSurfaces, Movement, Movement::*},
         consts::VEC_FRONT,
         model::Model,
-        shader::Shader,
     },
     DELTA_TIME,
 };
@@ -40,12 +38,6 @@ impl Default for Player {
     }
 }
 
-impl Drawable for Player {
-    unsafe fn draw(&self, shader: &Shader) {
-        self.aircraft.model().draw(shader);
-    }
-}
-
 impl Player {
     pub fn new(aircraft_kind: AircraftKind) -> Self {
         Player {
@@ -72,16 +64,16 @@ impl Player {
         self.camera_mut().pitch(c.pitch_bias() * delta_time);
         self.camera_mut().yaw(c.yaw_bias() * delta_time);
         self.camera_mut().roll(c.roll_bias() * delta_time);
-        self.camera_mut().forward(c.throttle() * delta_time);
+        // self.camera_mut().forward(c.throttle() * delta_time);
 
         // let model = self.aircraft_mut().model_mut();
 
-        // model.pitch(controls.pitch_bias() * delta_time);
-        // model.yaw(controls.yaw_bias() * delta_time);
-        // model.roll(controls.roll_bias() * delta_time);
-        // model.forward(controls.throttle());
+        // model.pitch(c.pitch_bias() * delta_time);
+        // model.yaw(c.yaw_bias() * delta_time);
+        // model.roll(c.roll_bias() * delta_time);
+        // model.forward(c.throttle());
 
-        // //Third person camera (not looking really good now)
+        //Third person camera (not looking really good now)
         // self.camera.position = self.aircraft().model().position()
         //     + (self
         //         .aircraft()

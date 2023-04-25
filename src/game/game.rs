@@ -1,4 +1,3 @@
-use crate::cg::particles;
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
@@ -9,9 +8,10 @@ use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
-use super::enemy::Enemy;
+use super::flight::steerable::Steerable;
 use super::missile::EnemyID;
 use super::missile_guidance::GuidanceStatus;
+use super::particle_generation::ParticleGeneration;
 use super::terrain::Terrain;
 use super::{missile::Missile, player::Player};
 use crate::c_str;
@@ -21,7 +21,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3};
+use cgmath::{vec3, Deg, InnerSpace, Vector3, Matrix4, SquareMatrix};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -126,7 +126,13 @@ impl Game {
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
-        self.enemies.update();
+	self.enemies.map.values_mut().for_each(|e| {
+	    let position = e.aircraft().model().position();
+	    let front = e.aircraft().model().front();
+            e.aircraft_mut().particle_generator_mut().update_particles(position, 1, front);
+            e.aircraft_mut().model_mut().forward(0.10);
+            e.aircraft_mut().model_mut().pitch(0.15);
+        });
         self.update_missiles();
         self.missiles
             .retain(|m| !matches!(m.guidance, GuidanceStatus::None(0)));
@@ -163,7 +169,7 @@ impl Game {
         Some(*targeted[0].0)
     }
 
-    pub unsafe fn draw(&mut self, shader: &Shader, particle_shader: &Shader) {
+    pub unsafe fn draw(&mut self, shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
 
@@ -174,25 +180,25 @@ impl Game {
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
         // Drawing game objects starts here
-        self.terrain.draw(&shader);
+        //self.terrain.draw(&shader);
         self.skybox.draw(&shader);
-        self.enemies.draw(&shader);
-        self.player.draw(shader);
+	self.enemies.map.values_mut().for_each(|e| {
+            e.aircraft.draw(shader);
+
+	    e.aircraft_mut().draw_particles(shader);
+        });
         self.missiles.iter_mut().for_each(|m| {
             m.draw(shader);
         });
 
-        // let mut model_matrix = self.player.cockpit.model_matrix();
-        // let time = self.glfw.get_time() as f32 * 2.0;
-        // model_matrix = model_matrix
-        //     * Matrix4::from_translation(vec3(
-        //         time.sin() * 0.01,
-        //         time.cos().sin() * 0.01,
-        //         time.cos() * 0.01,
-        //     ));
-        // shader.set_mat4(c_str!("model"), &model_matrix);
-        //shader.set_mat4(c_str!("view"), &Matrix4::identity());
-        //self.player.cockpit.draw(&shader);
+        let time = self.glfw.get_time() as f32 * 2.0;
+        self.player.cockpit_mut().set_translation(vec3(
+                time.sin() * 0.01,
+                time.cos().sin() * 0.01 - 0.31,
+                time.cos() * 0.01,
+            ));
+        shader.set_mat4(c_str!("view"), &Matrix4::identity());
+        self.player.cockpit.draw(&shader);
     }
 
     pub fn process_events(

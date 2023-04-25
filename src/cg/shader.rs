@@ -1,6 +1,6 @@
-use cgmath::{Matrix, Matrix4};
-use gl;
+use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Array, Vector4};
 use gl::types::*;
+use gl::{self, FALSE};
 use log::info;
 use std::ffi::{CStr, CString};
 use std::fs::File;
@@ -75,8 +75,17 @@ impl Shader {
             mat.as_ptr(),
         );
     }
+    
+    pub unsafe fn set_vector3(&self, name: &CStr, value: &Vector3<f32>) {
+        gl::Uniform3fv(gl::GetUniformLocation(self.id, name.as_ptr()), 1, value.as_ptr());
+    }
 
+    pub unsafe fn set_vector4(&self, name: &CStr, value: &Vector4<f32>) {
+        gl::Uniform4fv(gl::GetUniformLocation(self.id, name.as_ptr()), 1, value.as_ptr());
+    }
+    
     unsafe fn check_compile_errors(&self, shader: u32, type_: &str) {
+	println!("{}",shader);
         let mut success = gl::FALSE as GLint;
         let mut info_log: Vec<u8> = Vec::with_capacity(1024);
         info_log.set_len(1024 - 1); // subtract 1 to skip the trailing null character
@@ -89,7 +98,8 @@ impl Shader {
                     ptr::null_mut(),
                     info_log.as_mut_ptr() as *mut GLchar,
                 );
-                println!(
+		info_log.iter().for_each(|c| print!("{}",char::from(*c)));
+		println!(
                     "Shader compilation error of type: {}\n{}\n \
                           -- --------------------------------------------------- -- ",
                     type_,

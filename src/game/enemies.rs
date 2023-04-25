@@ -1,5 +1,4 @@
 use super::{
-    drawable::Drawable,
     enemy::Enemy,
     flight::steerable::Steerable,
     game::{ID_GENERATOR, TARGET_ENEMIES},
@@ -77,10 +76,3 @@ impl Enemies {
     }
 }
 
-impl Drawable for Enemies {
-    unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
-        self.map.values().for_each(|e| {
-            e.draw(shader);
-        });
-    }
-}
