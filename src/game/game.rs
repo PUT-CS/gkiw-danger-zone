@@ -1,11 +1,12 @@
-use crate::audio::audio_manager::{AudioManager, AudioMessage};
+use crate::audio::audio_manager::{AudioManager, AudioMessage, SoundEffect, SOUNDS};
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
-use log::{info, warn};
-use rayon::ThreadPoolBuilder;
+use log::{error, info, warn};
 use rayon::iter::IntoParallelRefIterator;
+use rayon::ThreadPoolBuilder;
+use std::string::ParseError;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::JoinHandle;
 extern crate glfw;
@@ -51,8 +52,6 @@ impl Game {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-
-
         log4rs::init_file("log_config.yaml", Default::default()).unwrap();
         info!("Initialized log4rs");
         info!("Initialized GLFW");
@@ -94,7 +93,9 @@ impl Game {
             .expect("Configure global rayon threadpool");
 
         let (tx, rx) = mpsc::channel::<AudioMessage>();
-        rayon::spawn(move || {AudioManager::run(rx);});
+        rayon::spawn(move || {
+            AudioManager::run(rx);
+        });
 
         let mut terrain = Terrain::default();
         terrain
@@ -311,6 +312,16 @@ impl Game {
             let enemy = self.enemies.get_by_id(id);
             let missile = Missile::new(self.player.camera(), enemy);
             self.missiles.push(missile);
+            let sound_id = ID_GENERATOR
+                .lock()
+                .unwrap()
+                .get_new_id_of(crate::game::id_gen::IDKind::Sound);
+            self.audio_sender
+                .send(AudioMessage::Play(
+                    sound_id,
+                    *SOUNDS.get(&SoundEffect::Beep).unwrap(),
+                ))
+                .unwrap();
             self.last_launch_time = self.glfw.get_time();
         }
     }
@@ -332,6 +343,8 @@ impl Game {
     }
 
     pub fn exit_hook(&mut self) {
-        self.audio_sender.send(AudioMessage::Exit).expect("Send Exit message to audio thread");
+        self.audio_sender
+            .send(AudioMessage::Exit)
+            .expect("Send Exit message to audio thread");
     }
 }
