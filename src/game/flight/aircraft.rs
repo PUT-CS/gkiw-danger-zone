@@ -86,10 +86,9 @@ impl Aircraft {
             controls: Controls::default(),
             kind,
             particle_generator: ParticleGenerator::new(
-                500,
-                Vector4::new(1., 0., 0., 1.),
-                Vector3::new(0., 1., 0.),
-                Model::new("resources/objects/mig21/mig21.obj"),
+                1500,
+		Vector4::new(1.,0.,0.,1.),
+		2.,
             ),
         }
     }

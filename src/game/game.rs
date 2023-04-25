@@ -9,6 +9,7 @@ use std::sync::mpsc::Receiver;
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
+use super::flight::steerable::Steerable;
 use super::missile::EnemyID;
 use super::particle_generation::ParticleGeneration;
 use super::terrain::Terrain;
@@ -128,7 +129,10 @@ impl Game {
         self.respawn_enemies();
 	self.enemies.map.values_mut().for_each(|e| {
 	    let position = e.aircraft().model().position();
-            e.aircraft_mut().particle_generator_mut().update_particles(position, Vector3::new(0., 1., 0.), 2);
+	    let front = e.aircraft().model().front();
+            e.aircraft_mut().particle_generator_mut().update_particles(position, 1, front);
+	    // e.aircraft_mut().model_mut().forward(0.1);
+	    // e.aircraft_mut().model_mut().pitch(0.15);
         });
 
         self.missiles.iter_mut().for_each(|m| {

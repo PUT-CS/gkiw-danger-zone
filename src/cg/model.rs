@@ -174,7 +174,8 @@ impl Model {
         // and only then we scale. Messing up this order results in
         // unexpected results like the model rotating around world origin
         // instead of its own local axis
-        s * t * r
+        //s * t * r
+	t * s * r
     }
 
     /// Get the model's position in world coordinates
