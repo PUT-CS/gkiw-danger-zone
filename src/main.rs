@@ -10,6 +10,7 @@ mod cg;
 mod game;
 mod macros;
 mod tests;
+mod audio;
 
 static mut DELTA_TIME: f32 = 0.;
 
@@ -41,6 +42,10 @@ fn main() {
 
         game.window.swap_buffers();
         game.glfw.poll_events();
+
+        if game.window.should_close() {
+            game.exit_hook();
+        }
     }
 }
 

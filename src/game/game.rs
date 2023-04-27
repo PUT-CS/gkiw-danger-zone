@@ -1,10 +1,12 @@
+use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
+use crate::audio::messages::AudioMessage;
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
-use log::{info, warn};
+use log::{error, info, warn};
 use rayon::ThreadPoolBuilder;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{self, Receiver, Sender};
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
@@ -43,6 +45,7 @@ pub struct Game {
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
+    audio_sender: Sender<AudioMessage>,
 }
 
 impl Game {
@@ -89,6 +92,11 @@ impl Game {
             .build_global()
             .expect("Configure global rayon threadpool");
 
+        let (tx, rx) = mpsc::channel::<AudioMessage>();
+        rayon::spawn(move || {
+            AudioManager::run(rx);
+        });
+
         let mut terrain = Terrain::default();
         terrain
             .model
@@ -118,6 +126,7 @@ impl Game {
             glfw,
             window,
             events,
+            audio_sender: tx,
         }
     }
 
@@ -309,6 +318,18 @@ impl Game {
             let enemy = self.enemies.get_by_id(id);
             let missile = Missile::new(self.player.camera(), enemy);
             self.missiles.push(missile);
+            let sound_id = ID_GENERATOR
+                .lock()
+                .unwrap()
+                .get_new_id_of(crate::game::id_gen::IDKind::Sound);
+            
+            self.audio_sender
+                .send(AudioMessage::Play(
+                    sound_id,
+                    *SOUNDS.get(&SoundEffect::Beep).unwrap(),
+                ))
+                .unwrap();
+            
             self.last_launch_time = self.glfw.get_time();
         }
     }
@@ -321,11 +342,17 @@ impl Game {
                 .target()
                 .and_then(|id| self.enemies.get_mut_by_id(id))
                 .or_else(|| None);
-            
+
             let message = m.update(enemy.as_deref());
             // match message {
             //     _ => todo!()
             // }
         })
+    }
+
+    pub fn exit_hook(&mut self) {
+        self.audio_sender
+            .send(AudioMessage::Exit)
+            .expect("Send Exit message to audio thread");
     }
 }

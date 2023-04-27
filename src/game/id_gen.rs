@@ -3,6 +3,7 @@ use std::collections::HashMap;
 #[derive(Hash, PartialEq, Eq)]
 pub enum IDKind {
     Enemy,
+    Sound
 }
 
 pub struct IDGenerator {
