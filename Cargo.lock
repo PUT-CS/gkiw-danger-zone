@@ -418,6 +418,7 @@ dependencies = [
  "lazy_static",
  "log",
  "log4rs",
+ "mp3-duration",
  "num",
  "rand 0.5.6",
  "rayon",
@@ -940,6 +941,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e21c73734c69dc95696c9ed8926a2b393171d98b3f5f5935686a26a487ab9b90"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "mp3-duration"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "348bdc7300502f0801e5b57c448815713cd843b744ef9bda252a2698fdf90a0f"
+dependencies = [
+ "thiserror",
 ]
 
 [[package]]

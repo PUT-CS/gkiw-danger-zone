@@ -1,14 +1,12 @@
-use crate::audio::audio_manager::{AudioManager, AudioMessage, SoundEffect, SOUNDS};
+use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
+use crate::audio::messages::AudioMessage;
 use crate::{SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
 use log::{error, info, warn};
-use rayon::iter::IntoParallelRefIterator;
 use rayon::ThreadPoolBuilder;
-use std::string::ParseError;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::thread::JoinHandle;
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
@@ -316,12 +314,14 @@ impl Game {
                 .lock()
                 .unwrap()
                 .get_new_id_of(crate::game::id_gen::IDKind::Sound);
+            
             self.audio_sender
                 .send(AudioMessage::Play(
                     sound_id,
                     *SOUNDS.get(&SoundEffect::Beep).unwrap(),
                 ))
                 .unwrap();
+            
             self.last_launch_time = self.glfw.get_time();
         }
     }

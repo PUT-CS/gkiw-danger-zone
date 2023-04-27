@@ -1,52 +1,15 @@
-use ambisonic::{
-    rodio::{Decoder, Sink, Source},
-    Ambisonic, AmbisonicBuilder,
+use super::{
+    messages::{InternalMessage, AudioMessage},
+    sound::{Sound, SoundID},
 };
-use cgmath::Point3;
+use ambisonic::rodio::{OutputStream, Sink};
 use lazy_static::lazy_static;
-use log::error;
-use log::{info, warn};
-use std::sync::atomic::Ordering;
+use log::{error, info, warn};
 use std::{
     collections::HashMap,
-    path::Path,
-    sync::{
-        atomic::AtomicBool,
-        mpsc::{self, Receiver, Sender},
-        Arc,
-    },
+    sync::mpsc::TryRecvError,
+    sync::mpsc::{self, Receiver, Sender},
 };
-use std::{fs::File, io::BufReader};
-
-pub enum AudioMessage {
-    Play(SoundID, &'static str),
-    Stop(SoundID),
-    Resume(SoundID),
-    Exit,
-    MoveSoundTo(SoundID, Point3<f32>),
-}
-
-enum InternalMessage {
-    Play(Sound),
-    Stop,
-    Resume,
-    MoveSoundTo(Point3<f32>),
-    Exit
-}
-
-pub struct Sound {
-    pub source: Decoder<BufReader<File>>,
-}
-
-impl Sound {
-    pub fn new(path: &str) -> Self {
-        Self {
-            source: Decoder::new(BufReader::new(File::open(path).unwrap())).unwrap(),
-        }
-    }
-}
-
-type SoundID = u32;
 
 #[derive(Hash, PartialEq, Eq)]
 pub enum SoundEffect {
@@ -60,26 +23,23 @@ lazy_static! {
 }
 
 pub struct AudioManager {
+    /// Receiver for reading requests coming from the main game thread
     receiver: Receiver<AudioMessage>,
+    /// HashMap containing all currently played sounds with a sender
+    /// allowing for communication with the worker thread
     active_sounds: HashMap<SoundID, Sender<InternalMessage>>,
-    scene: Ambisonic,
     /// End Of Work channel. A thread can signal that it ended playback
     /// and should be cleaned up from the AudioManager sound hashmap.
     eow: (Sender<SoundID>, Receiver<SoundID>),
 }
 
 impl AudioManager {
+    /// Create a new AudioManager and start listening for messages
     pub fn run(receiver: Receiver<AudioMessage>) {
-        // let file = File::open("resources/sounds/serce.mp3").unwrap();
-        // let source = Decoder::new(BufReader::new(file)).unwrap();
-        //scene.play_omni(source.convert_samples());
-
         let eow = mpsc::channel::<SoundID>();
-        let scene = AmbisonicBuilder::default().build();
         let mut manager = Self {
             receiver,
             active_sounds: HashMap::new(),
-            scene,
             eow,
         };
         manager.listen();
@@ -91,17 +51,27 @@ impl AudioManager {
         sound: Sound,
         eow_sender: Sender<SoundID>,
     ) {
-        info!("PT: Spawning an audio thread with id {id}");
-        let s = Sink::new_idle();
-        s.0.append(sound.source);
-        s.0.play();
+        info!("Spawning audio thread with id: {id}");
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let sink = Sink::try_new(&stream_handle).unwrap();
+        sink.append(sound.source);
+        sink.play();
         loop {
-            warn!("PT: WAITING FOR A MESSAGE");
-            let message = match receiver.recv() {
-                Ok(msg) => msg,
-                Err(e) => {
-                    error!("{e}");
+            let message = match receiver.try_recv() {
+                Ok(m) => m,
+                Err(TryRecvError::Disconnected) => {
+                    error!("Receiver disconnected");
                     panic!();
+                }
+                Err(TryRecvError::Empty) => {
+                    if sink.empty() {
+                        warn!("Sound finished");
+                        eow_sender
+                            .send(id)
+                            .expect("Send message through EOW channel");
+                        break;
+                    }
+                    continue;
                 }
             };
             match message {
@@ -113,55 +83,78 @@ impl AudioManager {
                 InternalMessage::Stop => todo!("Stop sound"),
                 InternalMessage::Exit => {
                     warn!("Killing player thread!");
-                    break
-                }
-            }
-            if s.0.empty() {
-                eprintln!("Sink empty");
-                eow_sender
-                    .send(id)
-                    .expect("Send message through EOW channel");
-                break;
-            }
-        }
-    }
-
-    pub fn listen(&mut self) {
-        loop {
-            info!("AT: WAITING FOR A MESSAGE FROM MAIN THREAD");
-            match self
-                .receiver
-                .recv()
-                .expect("Receive message from the main thread")
-            {
-                AudioMessage::Play(id, path) => {
-                    info!("AT: RECEIVED PLAY REQUEST");
-                    // Channel for communicating with the new thread (pausing, resuming, moving sound position etc.)
-                    let (sender, receiver) = mpsc::channel::<InternalMessage>();
-                    // Sender that enables the thread to signal that its work has finished and it should get cleaned up
-                    let eow_sender = self.eow.0.clone();
-                    // Save the sound info to a hashmap, allowing later communication
-                    self.active_sounds.insert(id, sender.clone());
-                    info!("AT: SPAWNING PLAYER THREAD");
-                    rayon::spawn(move || {
-                        let sound = Sound::new(path);
-                        AudioManager::player_thread(id, receiver, sound, eow_sender)
-                    });
-                    info!("AT: SPAWNED PLAYER THREAD");
-                }
-                AudioMessage::Resume(id) => todo!(),
-                AudioMessage::Stop(id) => todo!(),
-                AudioMessage::MoveSoundTo(id, position) => todo!(),
-                AudioMessage::Exit => {
-                    warn!("Audio cleanup");
-                    self.active_sounds.values().for_each(|s| {s.send(InternalMessage::Exit).unwrap();});
                     break;
                 }
             }
         }
     }
 
-    pub fn play() {}
-    pub fn stop() {}
-    pub fn resume() {}
+    /// Listen to messages on two receivers.
+    /// 1. Messages from the main thread - play, resume, stop requests
+    /// 2. Messages from worker threads that finished playback
+    pub fn listen(&mut self) {
+        loop {
+            match self.receiver.try_recv() {
+                Ok(msg) => {
+                    if self.handle_audio_message_or_break(msg) {
+                        break;
+                    }
+                }
+                Err(TryRecvError::Disconnected) => {
+                    error!("Sender Disconnected");
+                    panic!();
+                }
+                Err(TryRecvError::Empty) => {}
+            };
+            match self.eow.1.try_recv() {
+                Ok(id) => {
+                    warn!("Removing sound with id: {id}");
+                    self.active_sounds.remove(&id);
+                }
+                Err(TryRecvError::Disconnected) => {
+                    error!("Sender disconnected");
+                    panic!()
+                }
+                Err(TryRecvError::Empty) => {}
+            }
+        }
+    }
+
+    fn handle_audio_message_or_break(&mut self, msg: AudioMessage) -> bool {
+        match msg {
+            AudioMessage::Play(id, path) => {
+                // Channel for communicating with the new thread (pausing, resuming, moving sound position etc.)
+                let (sender, receiver) = mpsc::channel::<InternalMessage>();
+                // Sender that enables the thread to signal that its work has finished and it should get cleaned up
+                let eow_sender = self.eow.0.clone();
+                // Save the sound info to a hashmap, allowing later communication
+                self.active_sounds.insert(id, sender.clone());
+                rayon::spawn(move || {
+                    let sound = Sound::new(path);
+                    AudioManager::player_thread(id, receiver, sound, eow_sender)
+                });
+                false
+            }
+            AudioMessage::Resume(id) => todo!(),
+            AudioMessage::Stop(id) => todo!(),
+            AudioMessage::MoveSoundTo(id, position) => todo!(),
+            AudioMessage::Exit => {
+                warn!("Starting audio cleanup");
+                self.active_sounds.values().for_each(|s| {
+                    s.send(InternalMessage::Exit).unwrap();
+                });
+                true
+            }
+        }
+    }
+
+    pub fn play() {
+        todo!()
+    }
+    pub fn stop() {
+        todo!()
+    }
+    pub fn resume() {
+        todo!()
+    }
 }
