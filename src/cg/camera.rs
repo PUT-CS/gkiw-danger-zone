@@ -1,4 +1,5 @@
 use crate::game::flight::steerable::Steerable;
+use crate::gen_ref_getters;
 use crate::SCR_HEIGHT;
 use crate::SCR_WIDTH;
 use cgmath;
@@ -6,8 +7,8 @@ use cgmath::perspective;
 use cgmath::prelude::*;
 use cgmath::vec3;
 use cgmath::Deg;
+use cgmath::Matrix3;
 use cgmath::Quaternion;
-use crate::gen_ref_getters;
 
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
@@ -81,7 +82,6 @@ impl Steerable for Camera {
         self.front = (rotation * self.front).normalize();
         self.right = (rotation * self.right).normalize();
     }
-
     fn roll(&mut self, amount: f32) {
         let rotation = Quaternion::from_axis_angle(self.front, Deg(amount));
         self.right = (rotation * self.right).normalize();
@@ -97,13 +97,21 @@ impl Camera {
         Matrix4::look_at(self.position, self.position + self.front, self.up)
     }
 
+    pub fn orientation_quat(&self) -> Quaternion<f32> {
+        let m = self.view_matrix().invert().expect("Invertible view matrix");
+        let rot = Matrix3::from([
+            [m.x.x, m.x.y, m.x.z],
+            [m.y.x, m.y.y, m.y.z],
+            [m.z.x, m.z.y, m.z.z],
+        ]);
+        Quaternion::from(rot)
+    }
+
     pub fn process_mouse_movement(&mut self, mut xoffset: f32, mut yoffset: f32) {
         xoffset *= self.mouse_sensitivity;
         yoffset *= self.mouse_sensitivity;
         self.yaw(-xoffset);
         self.pitch(yoffset);
-
-        // compensate for unwanted roll here
     }
 
     pub fn process_mouse_scroll(&mut self, yoffset: f32) {

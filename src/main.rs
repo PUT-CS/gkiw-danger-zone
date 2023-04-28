@@ -13,6 +13,7 @@ mod tests;
 mod audio;
 
 static mut DELTA_TIME: f32 = 0.;
+static mut GLFW_TIME: f64 = 0.;
 
 fn main() {
     let mut first_mouse = true;
@@ -29,6 +30,7 @@ fn main() {
     );
 
     while !game.window.should_close() {
+        unsafe {GLFW_TIME = game.glfw.get_time()}
         let current_frame = game.glfw.get_time() as f32;
         update_delta_time(current_frame, last_frame);
         last_frame = current_frame;

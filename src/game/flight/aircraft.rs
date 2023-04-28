@@ -1,14 +1,17 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
 use crate::{
-    cg::{camera::ControlSurfaces, model::Model, particles::ParticleGenerator},
-    game::{particle_generation::ParticleGeneration, drawable::Drawable, modeled::Modeled},
-    gen_ref_getters, DELTA_TIME, c_str,
+    c_str,
+    cg::{camera::{ControlSurfaces, Camera}, model::Model, particles::ParticleGenerator},
+    game::{
+        drawable::Drawable, guns::Guns, modeled::Modeled, particle_generation::ParticleGeneration,
+    },
+    gen_ref_getters, DELTA_TIME,
 };
-use std::ffi::CStr;
-use cgmath::{Deg, Vector3, Vector4, EuclideanSpace};
+use cgmath::{Deg, EuclideanSpace, Quaternion, Vector3, Vector4};
 use lazy_static::lazy_static;
 use log::info;
 use std::collections::HashMap;
+use std::ffi::CStr;
 use AircraftKind::*;
 
 const MAX_PITCH_BIAS: f32 = 35.;
@@ -16,13 +19,14 @@ const MAX_YAW_BIAS: f32 = 20.;
 const MAX_ROLL_BIAS: f32 = 70.;
 
 /// Struct representing an aircraft which can be steered and displayed
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Aircraft {
     model: Model,
     spec: AircraftSpec,
     controls: Controls,
     kind: AircraftKind,
     particle_generator: ParticleGenerator,
+    guns: Guns,
 }
 
 gen_ref_getters! {
@@ -31,6 +35,7 @@ gen_ref_getters! {
     spec -> &AircraftSpec,
     kind -> &AircraftKind,
     controls -> &Controls,
+    guns -> &Guns,
 }
 
 #[derive(Hash, PartialEq, Eq, Debug)]
@@ -49,34 +54,33 @@ lazy_static! {
 }
 
 impl ParticleGeneration for Aircraft {
-    fn particle_generator(&self) -> & ParticleGenerator {
-	&self.particle_generator
+    fn particle_generator(&self) -> &ParticleGenerator {
+        &self.particle_generator
     }
     fn particle_generator_mut(&mut self) -> &mut ParticleGenerator {
-	&mut self.particle_generator
+        &mut self.particle_generator
     }
 }
 
 impl Drawable for Aircraft {
     unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
-	self.model().draw(shader);
+        self.model().draw(shader);
     }
 }
 
 impl Modeled for Aircraft {
     fn model(&self) -> &Model {
-	&self.model
+        &self.model
     }
     fn model_mut(&mut self) -> &mut Model {
-	&mut self.model
+        &mut self.model
     }
 }
 
 impl Aircraft {
     pub fn new(kind: AircraftKind) -> Self {
         info!("Creating new Aircraft of kind : {kind:?}");
-        let mut model = Model::new(MODEL_PATHS.get(&kind).expect("Path not found for kind"));
-        //model.yaw(1.);
+        let model = Model::new(MODEL_PATHS.get(&kind).expect("Path not found for kind"));
         Aircraft {
             model,
             spec: BLUEPRINTS
@@ -85,11 +89,8 @@ impl Aircraft {
                 .to_owned(),
             controls: Controls::default(),
             kind,
-            particle_generator: ParticleGenerator::new(
-                1500,
-		Vector4::new(1.,0.,0.,1.),
-		2.,
-            ),
+            particle_generator: ParticleGenerator::new(1500, Vector4::new(1., 0., 0., 1.), 2.),
+            guns: Guns::new(),
         }
     }
     pub fn controls_mut(&mut self) -> &mut Controls {
@@ -101,6 +102,14 @@ impl Aircraft {
 
     pub fn set_decay(&mut self, c: ControlSurfaces, b: bool) {
         self.controls_mut().set_decay(c, b);
+    }
+
+    pub fn fire_guns(&mut self, camera: &Camera) {
+        self.guns.fire(camera)
+    }
+
+    pub fn guns_mut(&mut self) -> &mut Guns {
+        &mut self.guns
     }
 
     /// Mutate the control parameters of the aircraft by making all the flap
@@ -128,7 +137,6 @@ impl Aircraft {
         *self.controls_mut().throttle_mut() =
             (self.controls().throttle() - delta_time).clamp(1., 10.)
     }
-
 }
 /// This implementation handles mutating the control parameters of the aircraft.
 /// It does not modify the actual model of the plane, only sets values
