@@ -36,17 +36,8 @@ impl Missile {
     pub fn new(camera: &Camera, target: Option<&Enemy>) -> Self {
         let mut model = Model::new("resources/objects/cockpit/cockpit.obj");
         let particle_generator = ParticleGenerator::new(1500, Vector4::new(1., 0., 0., 1.), 2.);
-        let m = camera
-            .view_matrix()
-            .invert()
-            .expect("Invertible view matrix");
-        let rot = Matrix3::from([
-            [m.x.x, m.x.y, m.x.z],
-            [m.y.x, m.y.y, m.y.z],
-            [m.z.x, m.z.y, m.z.z],
-        ]);
-        let quat = Quaternion::from(rot);
-        model.apply_quaternion(quat);
+        
+        model.apply_quaternion(camera.orientation_quat());
 
         let pos = camera.position().to_vec();
         model.set_translation(pos);
