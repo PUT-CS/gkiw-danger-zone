@@ -1,4 +1,4 @@
-use cgmath::{EuclideanSpace, Point3, Vector3, Vector4, Zero, InnerSpace};
+use cgmath::{EuclideanSpace, InnerSpace, Point3, Vector3, Vector4, Zero};
 use rand::{thread_rng, Rng};
 
 use crate::game::modeled::Modeled;
@@ -37,23 +37,23 @@ impl Particle {
 
 impl Drawable for ParticleGenerator {
     unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
-	self.model().draw(shader);
+        self.model().draw(shader);
     }
 }
 
 impl Modeled for ParticleGenerator {
     fn model(&self) -> &Model {
-	&self.model
+        &self.model
     }
     fn model_mut(&mut self) -> &mut Model {
-	&mut self.model
+        &mut self.model
     }
 }
 
 impl ParticleGenerator {
-    pub fn new(size: usize, color: Vector4<f32>,offset: f32) -> Self {
-	let mut model = Model::new("resources/objects/particle/particle.obj");
-	model.set_scale(0.1);
+    pub fn new(size: usize, color: Vector4<f32>, offset: f32) -> Self {
+        let mut model = Model::new("resources/objects/particle/particle.obj");
+        model.set_scale(0.1);
         let mut particles = Vec::with_capacity(size);
         particles.resize_with(size, || Particle::new(color));
         let generator = Self {
@@ -61,14 +61,17 @@ impl ParticleGenerator {
             color,
             offset,
             last_revived_particle_idx: 0,
-            enabled: false,
-	    model
+            enabled: true,
+            model,
         };
         generator
     }
 
     pub fn enable(&mut self) {
         self.enabled = true;
+    }
+    pub fn disable(&mut self) {
+        self.enabled = false;
     }
 
     pub fn first_dead_particle(&self) -> usize {
@@ -91,14 +94,14 @@ impl ParticleGenerator {
         &mut self,
         position: Point3<f32>,
         first_dead: usize,
-	front: Vector3<f32>,
+        front: Vector3<f32>,
     ) {
         let first_dead = &mut self.particles[first_dead];
         let rand1 = thread_rng().gen_range(-0.1, 0.1);
         let rand2 = thread_rng().gen_range(-0.1, 0.1);
         let rand3 = thread_rng().gen_range(-0.1, 0.1);
         let random = Vector3::new(rand1, rand2, rand3);
-	let offset = front * -1. *self.offset;
+        let offset = front * -1. * self.offset;
         first_dead.position = position + random + offset;
         first_dead.color = self.color;
         first_dead.life = thread_rng().gen_range(3., 5.);
@@ -109,8 +112,11 @@ impl ParticleGenerator {
         &mut self,
         position: Point3<f32>,
         number_new_particles: usize,
-	front: Vector3<f32>,
+        front: Vector3<f32>,
     ) {
+        if !self.enabled {
+            return;
+        }
         for _ in 0..number_new_particles {
             let first_dead = self.first_dead_particle();
             self.respawn_particle(position, first_dead, front);
@@ -120,7 +126,7 @@ impl ParticleGenerator {
             p.life -= delta_time;
             if p.life > 0. {
                 p.position -= p.velocity * delta_time;
-		p.color.w -= 2.5 * delta_time;
+                p.color.w -= 2.5 * delta_time;
             }
         })
     }

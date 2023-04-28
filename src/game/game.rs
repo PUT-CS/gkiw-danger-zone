@@ -1,6 +1,6 @@
 use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
 use crate::audio::messages::AudioMessage;
-use crate::{SCR_HEIGHT, SCR_WIDTH};
+use crate::{SCR_HEIGHT, SCR_WIDTH, DELTA_TIME};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
@@ -8,12 +8,12 @@ use log::{error, info, warn};
 use rayon::ThreadPoolBuilder;
 use std::sync::mpsc::{self, Receiver, Sender};
 extern crate glfw;
-use super::modeled::Modeled;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
 use super::flight::steerable::Steerable;
-use super::missile::EnemyID;
+use super::missile::{EnemyID, MissileMessage};
 use super::missile_guidance::GuidanceStatus;
+use super::modeled::Modeled;
 use super::particle_generation::ParticleGeneration;
 use super::terrain::Terrain;
 use super::{missile::Missile, player::Player};
@@ -142,15 +142,19 @@ impl Game {
             e.aircraft_mut()
                 .particle_generator_mut()
                 .update_particles(position, 1, front);
-            e.aircraft_mut().model_mut().forward(0.10);
-            e.aircraft_mut().model_mut().pitch(0.15);
+            let delta = unsafe {DELTA_TIME};
+            e.aircraft_mut().model_mut().forward(50. * delta);
+            e.aircraft_mut().model_mut().pitch(50. * delta);
+            e.aircraft_mut().model_mut().roll(50. * delta);
         });
-        self.update_missiles();
-	self.missiles.iter_mut().for_each(|m|{
-	    let position = m.model().position();
-	    let front = m.model().front();
-	    m.particle_generator_mut().update_particles(position, 1, front);
-	});
+        let shot_down = self.update_missiles();
+        self.enemies.map.retain(|id, _| !shot_down.contains(id));
+        self.missiles.iter_mut().for_each(|m| {
+            let position = m.model().position();
+            let front = m.model().front();
+            m.particle_generator_mut()
+                .update_particles(position, 1, front);
+        });
         self.missiles
             .retain(|m| !matches!(m.guidance, GuidanceStatus::None(0)));
         self.player.aircraft_mut().guns_mut().update();
@@ -215,8 +219,8 @@ impl Game {
         });
         self.missiles.iter_mut().for_each(|m| {
             m.draw(shader);
-	    
-	    m.draw_particles(shader);
+
+            m.draw_particles(shader);
         });
         self.player.aircraft().guns().draw(shader);
 
@@ -356,19 +360,20 @@ impl Game {
     }
 
     /// Give the missiles a reference to the Enemy they are currently
-    /// targeting so they can mutate their state accordingly
-    pub fn update_missiles(&mut self) {
-        self.missiles.iter_mut().for_each(|m| {
-	    let enemy = m
+    /// targeting so they can mutate their state accordingly.
+    /// Returns a vector of IDs of shot down enemies
+    pub fn update_missiles(&mut self) -> Vec<EnemyID> {
+        let mut shot_down = Vec::with_capacity(self.missiles.len());
+        self.missiles.iter_mut().for_each(|missile| {
+            let enemy = missile
                 .target()
                 .and_then(|id| self.enemies.get_mut_by_id(id))
                 .or_else(|| None);
-
-            let message = m.update(enemy.as_deref());
-            // match message {
-            //     _ => todo!()
-            // }
-        })
+            if let Some(MissileMessage::HitEnemy(id)) = missile.update(enemy.as_deref()) {
+                shot_down.push(id);
+            }
+        });
+        shot_down
     }
 
     pub fn fire_guns(&mut self) {

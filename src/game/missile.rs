@@ -2,11 +2,13 @@ use super::drawable::Drawable;
 use super::enemy::Enemy;
 use super::missile_guidance::GuidanceStatus;
 use super::modeled::Modeled;
+use crate::cg::consts::{VEC_UP, VEC_RIGHT};
 use crate::cg::particles::ParticleGenerator;
+use crate::game::flight::steerable::Steerable;
 use crate::game::particle_generation::ParticleGeneration;
 use crate::DELTA_TIME;
 use crate::{cg::camera::Camera, cg::model::Model};
-use cgmath::{EuclideanSpace, Matrix3, MetricSpace, Point3, Quaternion, SquareMatrix, Vector3, Vector4};
+use cgmath::{EuclideanSpace, Matrix3, MetricSpace, Point3, Quaternion, SquareMatrix, Vector3, Vector4, Matrix4, Rotation, InnerSpace};
 use log::warn;
 use vek::{QuadraticBezier3, Vec3};
 
@@ -17,7 +19,6 @@ pub enum MissileMessage {
     Terminated,
     None,
     HitEnemy(EnemyID),
-    RegainedLock(EnemyID),
     BeganTermination,
 }
 
@@ -34,12 +35,12 @@ impl Missile {
     /// Create a new missile.
     /// Uses player's position to spawn the missile at the right coordinates.
     pub fn new(camera: &Camera, target: Option<&Enemy>) -> Self {
-        let mut model = Model::new("resources/objects/cockpit/cockpit.obj");
+        let mut model = Model::new("resources/objects/missile/missile.obj");
         let particle_generator = ParticleGenerator::new(1500, Vector4::new(1., 0., 0., 1.), 2.);
         
         model.apply_quaternion(camera.orientation_quat());
 
-        let pos = camera.position().to_vec();
+        let pos = camera.position().to_vec() + camera.up * -0.5;
         model.set_translation(pos);
 
         let guidance = if let Some(enemy) = target {
@@ -57,7 +58,7 @@ impl Missile {
         } else {
             GuidanceStatus::none()
         };
-
+        
         Self { model, guidance, particle_generator }
     }
 
@@ -70,7 +71,6 @@ impl Missile {
             }
             (None, GuidanceStatus::Active(_)) => self.begin_terminate(),
             (_, GuidanceStatus::None(timer)) => self.termination_countdown(timer),
-            _ => todo!(),
         };
     }
 
@@ -113,6 +113,10 @@ impl Missile {
         guidance_data.bezier.end = target.aircraft().model().position_vek();
         self.model.set_translation(new_point);
 
+        let vec_to_enemy = (target.position() - self.position()).normalize();
+        let quat = Quaternion::from_arc(*VEC_RIGHT, vec_to_enemy, None);
+        self.model.set_orientation(quat);
+        self.model.yaw(-90.);
         None
     }
 
@@ -124,6 +128,7 @@ impl Missile {
 
     /// Decrement the termination countdown
     fn termination_countdown(&mut self, timer: u32) -> Option<MissileMessage> {
+        self.model.forward(100. * unsafe {DELTA_TIME});
         self.guidance = GuidanceStatus::None(timer - 1);
         None
     }

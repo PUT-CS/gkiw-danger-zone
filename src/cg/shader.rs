@@ -85,7 +85,6 @@ impl Shader {
     }
     
     unsafe fn check_compile_errors(&self, shader: u32, type_: &str) {
-	println!("{}",shader);
         let mut success = gl::FALSE as GLint;
         let mut info_log: Vec<u8> = Vec::with_capacity(1024);
         info_log.set_len(1024 - 1); // subtract 1 to skip the trailing null character

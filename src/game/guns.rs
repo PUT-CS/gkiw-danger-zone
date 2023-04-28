@@ -4,7 +4,7 @@ use crate::{
     DELTA_TIME, GLFW_TIME,
 };
 use cgmath::{EuclideanSpace, MetricSpace, Quaternion, Vector3};
-use log::{error, warn};
+use log::{info, error, warn};
 
 const BULLET_SPEED: f32 = 1000.;
 const BULLET_TERMINATION_TIME: f64 = 3.;
@@ -57,7 +57,7 @@ impl Guns {
         for enemy in enemies.map.values() {
             for bullet in &self.bullets {
                 if enemy.position().distance(bullet.model.position()) < 2. {
-                    warn!("Hit enemy {}", enemy.id());
+                    info!("Hit enemy {}", enemy.id());
                     hit_enemies.push(enemy.id());
                 }
             }

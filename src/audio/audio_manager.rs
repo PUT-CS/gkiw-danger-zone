@@ -65,7 +65,7 @@ impl AudioManager {
                 }
                 Err(TryRecvError::Empty) => {
                     if sink.empty() {
-                        warn!("Sound finished");
+                        info!("Sound finished");
                         eow_sender
                             .send(id)
                             .expect("Send message through EOW channel");
@@ -82,7 +82,7 @@ impl AudioManager {
                 InternalMessage::Resume => todo!("Resume"),
                 InternalMessage::Stop => todo!("Stop sound"),
                 InternalMessage::Exit => {
-                    warn!("Killing player thread!");
+                    info!("Killing player thread!");
                     break;
                 }
             }
@@ -108,7 +108,7 @@ impl AudioManager {
             };
             match self.eow.1.try_recv() {
                 Ok(id) => {
-                    warn!("Removing sound with id: {id}");
+                    info!("Removing sound with id: {id}");
                     self.active_sounds.remove(&id);
                 }
                 Err(TryRecvError::Disconnected) => {
@@ -139,7 +139,7 @@ impl AudioManager {
             AudioMessage::Stop(id) => todo!(),
             AudioMessage::MoveSoundTo(id, position) => todo!(),
             AudioMessage::Exit => {
-                warn!("Starting audio cleanup");
+                info!("Starting audio cleanup");
                 self.active_sounds.values().for_each(|s| {
                     s.send(InternalMessage::Exit).unwrap();
                 });

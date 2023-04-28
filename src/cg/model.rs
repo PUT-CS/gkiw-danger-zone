@@ -266,7 +266,7 @@ impl Model {
             .to_str()
             .unwrap()
             .into();
-
+        
         let obj = tobj::load_obj(path);
         let (models, materials) = obj.unwrap();
 
