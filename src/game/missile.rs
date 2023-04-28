@@ -2,12 +2,11 @@ use super::drawable::Drawable;
 use super::enemy::Enemy;
 use super::missile_guidance::GuidanceStatus;
 use super::modeled::Modeled;
+use crate::cg::particles::ParticleGenerator;
+use crate::game::particle_generation::ParticleGeneration;
 use crate::DELTA_TIME;
 use crate::{cg::camera::Camera, cg::model::Model};
-use cgmath::{
-    EuclideanSpace, Matrix3, MetricSpace, Point3, Quaternion, SquareMatrix,
-    Vector3,
-};
+use cgmath::{EuclideanSpace, Matrix3, MetricSpace, Point3, Quaternion, SquareMatrix, Vector3, Vector4};
 use log::warn;
 use vek::{QuadraticBezier3, Vec3};
 
@@ -28,6 +27,7 @@ pub enum MissileMessage {
 pub struct Missile {
     pub model: Model,
     pub guidance: GuidanceStatus,
+    particle_generator: ParticleGenerator,
 }
 
 impl Missile {
@@ -35,7 +35,8 @@ impl Missile {
     /// Uses player's position to spawn the missile at the right coordinates.
     pub fn new(camera: &Camera, target: Option<&Enemy>) -> Self {
         let mut model = Model::new("resources/objects/cockpit/cockpit.obj");
-
+        let particle_generator = ParticleGenerator::new(1500, Vector4::new(1., 0., 0., 1.), 2.);
+        
         model.apply_quaternion(camera.orientation_quat());
 
         let pos = camera.position().to_vec();
@@ -57,7 +58,7 @@ impl Missile {
             GuidanceStatus::none()
         };
 
-        Self { model, guidance }
+        Self { model, guidance, particle_generator }
     }
 
     /// Report on what the missile is doing this frame
@@ -66,7 +67,7 @@ impl Missile {
         return match (enemy, self.guidance) {
             (Some(e), GuidanceStatus::Active(_)) => {
                 self.try_hit_target(e).or_else(|| self.guide_towards(e))
-            },
+            }
             (None, GuidanceStatus::Active(_)) => self.begin_terminate(),
             (_, GuidanceStatus::None(timer)) => self.termination_countdown(timer),
             _ => todo!(),
@@ -86,7 +87,7 @@ impl Missile {
     /// Move the missile towards its target along the bezier curve contained in GuidanceData
     fn guide_towards(&mut self, target: &Enemy) -> Option<MissileMessage> {
         assert!(matches!(self.guidance, GuidanceStatus::Active(_)));
-        
+
         let guidance_data = if let GuidanceStatus::Active(data) = &mut self.guidance {
             data
         } else {
@@ -103,15 +104,15 @@ impl Missile {
             t + (l / (t * v1 + v2).magnitude())
         };
         guidance_data.progress += t;
-        
+
         let new_point = {
             let eval = guidance_data.bezier.evaluate(guidance_data.progress);
             Vector3::from([eval.x, eval.y, eval.z])
         };
-        
+
         guidance_data.bezier.end = target.aircraft().model().position_vek();
         self.model.set_translation(new_point);
-        
+
         None
     }
 
@@ -147,10 +148,18 @@ impl Drawable for Missile {
 
 impl Modeled for Missile {
     fn model(&self) -> &Model {
-	&self.model
+        &self.model
     }
     fn model_mut(&mut self) -> &mut Model {
-	&mut self.model
+        &mut self.model
     }
 }
 
+impl ParticleGeneration for Missile {
+    fn particle_generator(&self) -> &ParticleGenerator {
+        &self.particle_generator
+    }
+    fn particle_generator_mut(&mut self) -> &mut ParticleGenerator {
+        &mut self.particle_generator
+    }
+}

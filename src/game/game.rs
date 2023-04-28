@@ -8,6 +8,7 @@ use log::{error, info, warn};
 use rayon::ThreadPoolBuilder;
 use std::sync::mpsc::{self, Receiver, Sender};
 extern crate glfw;
+use super::modeled::Modeled;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
 use super::flight::steerable::Steerable;
@@ -145,6 +146,11 @@ impl Game {
             e.aircraft_mut().model_mut().pitch(0.15);
         });
         self.update_missiles();
+	self.missiles.iter_mut().for_each(|m|{
+	    let position = m.model().position();
+	    let front = m.model().front();
+	    m.particle_generator_mut().update_particles(position, 1, front);
+	});
         self.missiles
             .retain(|m| !matches!(m.guidance, GuidanceStatus::None(0)));
         self.player.aircraft_mut().guns_mut().update();
@@ -209,6 +215,8 @@ impl Game {
         });
         self.missiles.iter_mut().for_each(|m| {
             m.draw(shader);
+	    
+	    m.draw_particles(shader);
         });
         self.player.aircraft().guns().draw(shader);
 
@@ -351,7 +359,7 @@ impl Game {
     /// targeting so they can mutate their state accordingly
     pub fn update_missiles(&mut self) {
         self.missiles.iter_mut().for_each(|m| {
-            let enemy = m
+	    let enemy = m
                 .target()
                 .and_then(|id| self.enemies.get_mut_by_id(id))
                 .or_else(|| None);

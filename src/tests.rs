@@ -9,7 +9,7 @@ mod tests {
     fn model_position() {
         let mut model = Model::default();
         let translation = vec3(0.5, 1.0, 5.0);
-        model.translate(translation);
+        model.set_translation(translation);
         assert_eq!(model.position().to_vec(), translation);
     }
 }
