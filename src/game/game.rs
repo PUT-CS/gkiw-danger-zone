@@ -23,7 +23,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{vec3, Deg, InnerSpace, Vector3, Matrix4, SquareMatrix};
+use cgmath::{vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -135,16 +135,27 @@ impl Game {
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
-	self.enemies.map.values_mut().for_each(|e| {
-	    let position = e.aircraft().model().position();
-	    let front = e.aircraft().model().front();
-            e.aircraft_mut().particle_generator_mut().update_particles(position, 1, front);
+        self.enemies.map.values_mut().for_each(|e| {
+            let position = e.aircraft().model().position();
+            let front = e.aircraft().model().front();
+            e.aircraft_mut()
+                .particle_generator_mut()
+                .update_particles(position, 1, front);
             e.aircraft_mut().model_mut().forward(0.10);
             e.aircraft_mut().model_mut().pitch(0.15);
         });
         self.update_missiles();
         self.missiles
             .retain(|m| !matches!(m.guidance, GuidanceStatus::None(0)));
+        self.player.aircraft_mut().guns_mut().update();
+        if let Some(hit_enemies) = self
+            .player
+            .aircraft()
+            .guns()
+            .check_collisions(&self.enemies)
+        {
+            self.enemies.map.retain(|id, _| !hit_enemies.contains(id));
+        }
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
@@ -191,21 +202,22 @@ impl Game {
         // Drawing game objects starts here
         //self.terrain.draw(&shader);
         self.skybox.draw(&shader);
-	self.enemies.map.values_mut().for_each(|e| {
+        self.enemies.map.values_mut().for_each(|e| {
             e.aircraft.draw(shader);
 
-	    e.aircraft_mut().draw_particles(shader);
+            e.aircraft_mut().draw_particles(shader);
         });
         self.missiles.iter_mut().for_each(|m| {
             m.draw(shader);
         });
+        self.player.aircraft().guns().draw(shader);
 
         let time = self.glfw.get_time() as f32 * 2.0;
         self.player.cockpit_mut().set_translation(vec3(
-                time.sin() * 0.01,
-                time.cos().sin() * 0.01 - 0.31,
-                time.cos() * 0.01,
-            ));
+            time.sin() * 0.01,
+            time.cos().sin() * 0.01 - 0.31,
+            time.cos() * 0.01,
+        ));
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
         self.player.cockpit.draw(&shader);
     }
@@ -299,6 +311,7 @@ impl Game {
             Key::LeftControl,
             self.player.process_key(Movement::ThrottleDown)
         );
+        key_pressed!(self.window, Key::M, self.fire_guns());
         key_pressed!(self.window, Key::Space, self.launch_missile())
     }
 
@@ -322,14 +335,14 @@ impl Game {
                 .lock()
                 .unwrap()
                 .get_new_id_of(crate::game::id_gen::IDKind::Sound);
-            
+
             self.audio_sender
                 .send(AudioMessage::Play(
                     sound_id,
                     *SOUNDS.get(&SoundEffect::Beep).unwrap(),
                 ))
                 .unwrap();
-            
+
             self.last_launch_time = self.glfw.get_time();
         }
     }
@@ -348,6 +361,11 @@ impl Game {
             //     _ => todo!()
             // }
         })
+    }
+
+    pub fn fire_guns(&mut self) {
+        let camera = self.player.camera().clone();
+        self.player.aircraft_mut().fire_guns(&camera);
     }
 
     pub fn exit_hook(&mut self) {

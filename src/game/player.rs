@@ -12,7 +12,7 @@ use crate::{
     DELTA_TIME,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Player {
     aircraft: Aircraft,
     camera: Camera,
@@ -64,14 +64,14 @@ impl Player {
         self.camera_mut().pitch(c.pitch_bias() * delta_time);
         self.camera_mut().yaw(c.yaw_bias() * delta_time);
         self.camera_mut().roll(c.roll_bias() * delta_time);
-        // self.camera_mut().forward(c.throttle() * delta_time);
+        self.camera_mut().forward(c.throttle() * delta_time);
 
-        // let model = self.aircraft_mut().model_mut();
+        let model = self.aircraft_mut().model_mut();
 
-        // model.pitch(c.pitch_bias() * delta_time);
-        // model.yaw(c.yaw_bias() * delta_time);
-        // model.roll(c.roll_bias() * delta_time);
-        // model.forward(c.throttle());
+        model.pitch(c.pitch_bias() * delta_time);
+        model.yaw(c.yaw_bias() * delta_time);
+        model.roll(c.roll_bias() * delta_time);
+        model.forward(c.throttle() * delta_time);
 
         //Third person camera (not looking really good now)
         // self.camera.position = self.aircraft().model().position()
