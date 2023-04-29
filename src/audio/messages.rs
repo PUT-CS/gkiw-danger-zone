@@ -3,7 +3,8 @@ use cgmath::Point3;
 use super::sound::{Sound, SoundID};
 
 pub enum AudioMessage {
-    Play(SoundID, &'static str),
+    Play(SoundID, &'static str, bool),
+    Pause(SoundID),
     Stop(SoundID),
     Resume(SoundID),
     Exit,
@@ -11,7 +12,7 @@ pub enum AudioMessage {
 }
 
 pub enum InternalMessage {
-    Play(Sound),
+    Play(Sound, bool),
     Stop,
     Resume,
     MoveSoundTo(Point3<f32>),

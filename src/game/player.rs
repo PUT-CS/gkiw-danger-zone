@@ -1,6 +1,7 @@
 use cgmath::{vec3, Rotation};
 
 use super::flight::aircraft::{Aircraft, AircraftKind};
+use crate::audio::sound::SoundID;
 use crate::game::flight::steerable::Steerable;
 use crate::gen_ref_getters;
 use crate::{
@@ -18,6 +19,7 @@ pub struct Player {
     camera: Camera,
     pub cockpit: Model,
     kills: u32,
+    pub guns_sound: SoundID,
 }
 
 gen_ref_getters! {
@@ -34,6 +36,7 @@ impl Default for Player {
             camera: Camera::default(),
             kills: 0,
             cockpit: Model::new("resources/objects/cockpit/cockpit_old.obj"),
+            guns_sound: SoundID::MAX
         }
     }
 }
@@ -45,6 +48,7 @@ impl Player {
             camera: Camera::default(),
             kills: 0,
             cockpit: Model::new("resources/objects/cockpit/cockpit.obj"),
+            guns_sound: SoundID::MAX
         }
     }
     pub fn aircraft_mut(&mut self) -> &mut Aircraft {

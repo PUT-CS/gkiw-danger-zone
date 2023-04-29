@@ -1,3 +1,4 @@
+use crate::audio::audio::Audio;
 use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
 use crate::audio::messages::AudioMessage;
 use crate::{SCR_HEIGHT, SCR_WIDTH, DELTA_TIME};
@@ -46,7 +47,7 @@ pub struct Game {
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
-    audio_sender: Sender<AudioMessage>,
+    audio: Audio
 }
 
 impl Game {
@@ -94,6 +95,7 @@ impl Game {
             .expect("Configure global rayon threadpool");
 
         let (tx, rx) = mpsc::channel::<AudioMessage>();
+        let audio = Audio::new(tx);
         rayon::spawn(move || {
             AudioManager::run(rx);
         });
@@ -105,7 +107,8 @@ impl Game {
             .set_translation(vec3(0.0, -3800., 0.0));
 
         let mut player = Player::default();
-
+        audio.play(SoundEffect::CockpitAmbient, true);
+        
         player
             .cockpit_mut()
             .set_translation(vec3(0.0, -0.3, 0.0))
@@ -127,7 +130,7 @@ impl Game {
             glfw,
             window,
             events,
-            audio_sender: tx,
+            audio
         }
     }
 
@@ -323,7 +326,18 @@ impl Game {
             Key::LeftControl,
             self.player.process_key(Movement::ThrottleDown)
         );
-        key_pressed!(self.window, Key::M, self.fire_guns());
+        key_pressed!(self.window, Key::M, {
+            if !self.player.aircraft().guns().firing {
+                self.player.guns_sound = self.audio.play(SoundEffect::Guns, true);
+            }
+            self.fire_guns();
+        });
+        if self.window.get_key(Key::M) == Action::Release {
+            if self.player.aircraft().guns().firing {
+                self.audio.stop(self.player.guns_sound);
+                self.player.aircraft_mut().guns_mut().stop_firing();
+            }
+        }
         key_pressed!(self.window, Key::Space, self.launch_missile())
     }
 
@@ -343,17 +357,8 @@ impl Game {
             let enemy = self.enemies.get_by_id(id);
             let missile = Missile::new(self.player.camera(), enemy);
             self.missiles.push(missile);
-            let sound_id = ID_GENERATOR
-                .lock()
-                .unwrap()
-                .get_new_id_of(crate::game::id_gen::IDKind::Sound);
 
-            self.audio_sender
-                .send(AudioMessage::Play(
-                    sound_id,
-                    *SOUNDS.get(&SoundEffect::Beep).unwrap(),
-                ))
-                .unwrap();
+            self.audio.play(SoundEffect::MissileLaunch, false);
 
             self.last_launch_time = self.glfw.get_time();
         }
@@ -382,8 +387,6 @@ impl Game {
     }
 
     pub fn exit_hook(&mut self) {
-        self.audio_sender
-            .send(AudioMessage::Exit)
-            .expect("Send Exit message to audio thread");
+        self.audio.exit_hook();
     }
 }

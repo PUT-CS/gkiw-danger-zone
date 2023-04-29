@@ -23,6 +23,7 @@ pub struct Bullet {
 pub struct Guns {
     bullets: Vec<Bullet>,
     last_fire_time: f64,
+    pub firing: bool
 }
 
 impl Guns {
@@ -30,6 +31,7 @@ impl Guns {
         Self {
             bullets: Vec::with_capacity(1000),
             last_fire_time: 0.,
+            firing: false
         }
     }
 
@@ -42,6 +44,11 @@ impl Guns {
         let orientation = camera.orientation_quat();
         self.bullets.push(Bullet::new(position, orientation));
         self.last_fire_time = time;
+        self.firing = true;
+    }
+
+    pub fn stop_firing(&mut self) {
+        self.firing = false
     }
 
     pub fn update(&mut self) {
