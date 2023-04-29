@@ -3,8 +3,10 @@ use crate::{
     cg::{camera::Camera, model::Model},
     DELTA_TIME, GLFW_TIME,
 };
-use cgmath::{EuclideanSpace, MetricSpace, Quaternion, Vector3};
-use log::{info, error, warn};
+use cgmath::{Deg, EuclideanSpace, MetricSpace, Quaternion, Rotation3, Vector3};
+use itertools::Itertools;
+use log::{error, info, warn};
+use rand::{thread_rng, Rng};
 
 const BULLET_SPEED: f32 = 1000.;
 const BULLET_TERMINATION_TIME: f64 = 3.;
@@ -23,7 +25,7 @@ pub struct Bullet {
 pub struct Guns {
     bullets: Vec<Bullet>,
     last_fire_time: f64,
-    pub firing: bool
+    pub firing: bool,
 }
 
 impl Guns {
@@ -31,7 +33,7 @@ impl Guns {
         Self {
             bullets: Vec::with_capacity(1000),
             last_fire_time: 0.,
-            firing: false
+            firing: false,
         }
     }
 
@@ -41,7 +43,16 @@ impl Guns {
             return;
         }
         let position = camera.position().to_vec() + camera.right * 2.5 + camera.up * -1.5;
-        let orientation = camera.orientation_quat();
+        let rand_quat = {
+            let rands: (Deg<f32>, Deg<f32>, Deg<f32>) = (0..3)
+                .map(|_| Deg(thread_rng().gen_range(-0.3, 0.3)))
+                .collect_tuple()
+                .unwrap();
+            Quaternion::from_angle_x(rands.0)
+                * Quaternion::from_angle_y(rands.1)
+                * Quaternion::from_angle_z(rands.2)
+        };
+        let orientation = camera.orientation_quat() * rand_quat;
         self.bullets.push(Bullet::new(position, orientation));
         self.last_fire_time = time;
         self.firing = true;
