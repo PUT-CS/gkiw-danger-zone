@@ -1,7 +1,7 @@
 use crate::audio::audio::Audio;
 use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
 use crate::audio::messages::AudioMessage;
-use crate::{SCR_HEIGHT, SCR_WIDTH, DELTA_TIME};
+use crate::{DELTA_TIME, SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
@@ -12,6 +12,7 @@ extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
 use super::flight::steerable::Steerable;
+use super::hud::hud::Hud;
 use super::missile::{EnemyID, MissileMessage};
 use super::missile_guidance::GuidanceStatus;
 use super::modeled::Modeled;
@@ -47,7 +48,8 @@ pub struct Game {
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
-    audio: Audio
+    audio: Audio,
+    hud: Hud,
 }
 
 impl Game {
@@ -108,7 +110,7 @@ impl Game {
 
         let mut player = Player::default();
         audio.play(SoundEffect::CockpitAmbient, true);
-        
+
         player
             .cockpit_mut()
             .set_translation(vec3(0.0, -0.3, 0.0))
@@ -120,6 +122,8 @@ impl Game {
         let mut skybox = Model::new("resources/objects/skybox/skybox.obj");
         skybox.set_scale(1000.);
 
+        let hud = Hud::new();
+
         Game {
             player,
             enemies,
@@ -130,7 +134,8 @@ impl Game {
             glfw,
             window,
             events,
-            audio
+            audio,
+            hud,
         }
     }
 
@@ -145,7 +150,7 @@ impl Game {
             e.aircraft_mut()
                 .particle_generator_mut()
                 .update_particles(position, 1, front);
-            let delta = unsafe {DELTA_TIME};
+            let delta = unsafe { DELTA_TIME };
             e.aircraft_mut().model_mut().forward(50. * delta);
             e.aircraft_mut().model_mut().pitch(50. * delta);
             e.aircraft_mut().model_mut().roll(50. * delta);
@@ -169,6 +174,11 @@ impl Game {
         {
             self.enemies.map.retain(|id, _| !hit_enemies.contains(id));
         }
+        self.hud.update(
+            &self.enemies,
+            *self.player.camera().projection_matrix(),
+            self.player.camera().view_matrix(),
+        );
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
@@ -226,6 +236,8 @@ impl Game {
             m.draw_particles(shader);
         });
         self.player.aircraft().guns().draw(shader);
+
+        self.hud.draw(shader);
 
         let time = self.glfw.get_time() as f32 * 2.0;
         self.player.cockpit_mut().set_translation(vec3(
