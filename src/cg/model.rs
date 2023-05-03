@@ -165,7 +165,7 @@ impl Model {
     }
 
     /// Construct a model matrix based on model's orientation, scale and translation
-    fn build_model_matrix(&self) -> Matrix4 {
+    pub fn build_model_matrix(&self) -> Matrix4 {
         let s = Matrix4::from_scale(self.transformation.scale);
         let t = Matrix4::from_translation(self.transformation.translation);
         let r = Matrix4::from(self.orientation);

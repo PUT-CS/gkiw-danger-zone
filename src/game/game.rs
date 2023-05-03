@@ -26,12 +26,12 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3};
+use cgmath::{vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3, ortho};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
 
-pub const TARGET_ENEMIES: usize = 4;
+pub const TARGET_ENEMIES: usize = 1;
 pub const MISSILE_COOLDOWN: f64 = 0.5;
 
 lazy_static! {
@@ -151,9 +151,9 @@ impl Game {
                 .particle_generator_mut()
                 .update_particles(position, 1, front);
             let delta = unsafe { DELTA_TIME };
-            e.aircraft_mut().model_mut().forward(50. * delta);
-            e.aircraft_mut().model_mut().pitch(50. * delta);
-            e.aircraft_mut().model_mut().roll(50. * delta);
+            // e.aircraft_mut().model_mut().forward(50. * delta);
+            // e.aircraft_mut().model_mut().pitch(50. * delta);
+            // e.aircraft_mut().model_mut().roll(50. * delta);
         });
         let shot_down = self.update_missiles();
         self.enemies.map.retain(|id, _| !shot_down.contains(id));
@@ -176,8 +176,7 @@ impl Game {
         }
         self.hud.update(
             &self.enemies,
-            *self.player.camera().projection_matrix(),
-            self.player.camera().view_matrix(),
+            &self.player.camera()
         );
     }
 
@@ -222,6 +221,8 @@ impl Game {
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
+
+
         // Drawing game objects starts here
         //self.terrain.draw(&shader);
         self.skybox.draw(&shader);
@@ -237,8 +238,7 @@ impl Game {
         });
         self.player.aircraft().guns().draw(shader);
 
-        self.hud.draw(shader);
-
+        
         let time = self.glfw.get_time() as f32 * 2.0;
         self.player.cockpit_mut().set_translation(vec3(
             time.sin() * 0.01,
@@ -246,7 +246,9 @@ impl Game {
             time.cos() * 0.01,
         ));
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
-        self.player.cockpit.draw(&shader);
+        //self.player.cockpit.draw(&shader);
+
+        self.hud.draw(shader);
     }
 
     pub fn process_events(
