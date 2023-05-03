@@ -11,7 +11,6 @@ use std::sync::mpsc::{self, Receiver, Sender};
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
-use super::flight::steerable::Steerable;
 use super::hud::hud::Hud;
 use super::missile::{EnemyID, MissileMessage};
 use super::missile_guidance::GuidanceStatus;
@@ -26,7 +25,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3, ortho};
+use cgmath::{ortho, vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -105,8 +104,8 @@ impl Game {
         let mut terrain = Terrain::default();
         terrain
             .model
-            .set_scale(0.005)
-            .set_translation(vec3(0.0, -3800., 0.0));
+            .set_scale(0.05)
+            .set_translation(vec3(0.0, -150., 0.0));
 
         let mut player = Player::default();
         audio.play(SoundEffect::CockpitAmbient, true);
@@ -174,10 +173,7 @@ impl Game {
         {
             self.enemies.map.retain(|id, _| !hit_enemies.contains(id));
         }
-        self.hud.update(
-            &self.enemies,
-            &self.player.camera()
-        );
+        self.hud.update(&self.player.camera(), &self.enemies, self.targeted_enemy_id());
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
@@ -221,10 +217,8 @@ impl Game {
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
 
-
-
         // Drawing game objects starts here
-        //self.terrain.draw(&shader);
+        self.terrain.draw(&shader);
         self.skybox.draw(&shader);
         self.enemies.map.values_mut().for_each(|e| {
             e.aircraft.draw(shader);
@@ -238,12 +232,11 @@ impl Game {
         });
         self.player.aircraft().guns().draw(shader);
 
-        
         let time = self.glfw.get_time() as f32 * 2.0;
         self.player.cockpit_mut().set_translation(vec3(
-            time.sin() * 0.01,
-            time.cos().sin() * 0.01 - 0.31,
-            time.cos() * 0.01,
+            time.sin() * 0.003,
+            time.cos().sin() * 0.003 - 0.31,
+            time.cos() * 0.003,
         ));
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
         self.player.cockpit.draw(&shader);
