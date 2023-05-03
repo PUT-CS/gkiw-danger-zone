@@ -246,7 +246,7 @@ impl Game {
             time.cos() * 0.01,
         ));
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
-        //self.player.cockpit.draw(&shader);
+        self.player.cockpit.draw(&shader);
 
         self.hud.draw(shader);
     }
