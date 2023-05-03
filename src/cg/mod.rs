@@ -6,3 +6,4 @@ pub mod transformation;
 pub mod vertex;
 pub mod consts;
 pub mod particles;
+pub mod light;
