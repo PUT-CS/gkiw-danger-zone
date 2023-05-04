@@ -1,9 +1,9 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
 use crate::{
     c_str,
-    cg::{camera::{ControlSurfaces, Camera}, model::Model, particles::ParticleGenerator},
+    cg::{camera::{ControlSurfaces, Camera}, model::Model, particles::ParticleGenerator, light::PointLight},
     game::{
-        drawable::Drawable, guns::Guns, modeled::Modeled, particle_generation::ParticleGeneration,
+        drawable::Drawable, guns::Guns, modeled::Modeled, particle_generation::ParticleGeneration, game::TARGET_ENEMIES,
     },
     gen_ref_getters, DELTA_TIME,
 };
@@ -64,7 +64,7 @@ impl ParticleGeneration for Aircraft {
 
 impl Drawable for Aircraft {
     unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
-        self.model().draw(shader);
+	self.model().draw(shader);
     }
 }
 
