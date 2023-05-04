@@ -105,7 +105,7 @@ impl Drawable for Model {
 	
         let matrix = self.build_model_matrix();
         shader.set_mat4(c_str!("model"), &matrix);
-        shader.set_mat4(c_str!("inverseModel"), &matrix.invert().unwrap());
+        shader.set_mat4(c_str!("inverseModel"), &matrix.invert().unwrap_or_else(|| matrix));
 	// set material properties
 	shader.set_vector3(c_str!("material.diffuse"), &self.material.diffuse);
 	shader.set_vector3(c_str!("material.specular"), &self.material.specular);
