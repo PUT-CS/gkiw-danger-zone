@@ -1,7 +1,8 @@
 use crate::audio::audio::Audio;
 use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
 use crate::audio::messages::AudioMessage;
-use crate::{DELTA_TIME, SCR_HEIGHT, SCR_WIDTH};
+use crate::game::targeting_data::{self, TargetingData};
+use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
@@ -30,8 +31,9 @@ use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
 
-pub const TARGET_ENEMIES: usize = 1;
+pub const TARGET_ENEMIES: usize = 3;
 pub const MISSILE_COOLDOWN: f64 = 0.5;
+pub const SWITCH_COOLDOWN: f64 = 0.5;
 
 lazy_static! {
     pub static ref ID_GENERATOR: Mutex<IDGenerator> = Mutex::new(IDGenerator::default());
@@ -44,6 +46,8 @@ pub struct Game {
     terrain: Terrain,
     skybox: Model,
     last_launch_time: f64,
+    last_target_switch_time: f64,
+    targeting_data: Option<TargetingData>,
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
@@ -123,13 +127,17 @@ impl Game {
 
         let hud = Hud::new();
 
+        let targeting_data = None;
+
         Game {
             player,
             enemies,
             missiles: vec![],
             terrain,
             skybox,
+            last_target_switch_time: glfw.get_time() - SWITCH_COOLDOWN,
             last_launch_time: glfw.get_time() - MISSILE_COOLDOWN,
+            targeting_data,
             glfw,
             window,
             events,
@@ -173,38 +181,16 @@ impl Game {
         {
             self.enemies.map.retain(|id, _| !hit_enemies.contains(id));
         }
-        self.hud.update(&self.player.camera(), &self.enemies, self.targeted_enemy_id());
+        self.hud.update(
+            &self.player.camera(),
+            &self.enemies,
+            &self.targeting_data
+        );
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
     pub fn respawn_enemies(&mut self) {
         self.enemies.respawn_enemies();
-    }
-
-    /// Check if the player aims their nose at an enemy, triggering a missile lock
-    /// countdown on one of them (lock not implemented yet)
-    pub fn targeted_enemy_id(&self) -> Option<EnemyID> {
-        let player_front = self.player.camera().front;
-        let player_position = self.player.camera().position;
-
-        let mut targeted = self
-            .enemies
-            .map
-            .iter()
-            .map(|tuple| {
-                let enemy = tuple.1;
-                let pos = enemy.aircraft().model().position();
-                let direction = (pos - player_position).normalize();
-                let deg = direction.angle(player_front).0.to_degrees();
-                (tuple.0, (deg, enemy))
-            })
-            .filter(|&(_, (deg, _))| deg < 20.)
-            .collect_vec();
-        if targeted.is_empty() {
-            return None;
-        }
-        targeted.sort_by(|t1, t2| t1.1 .0.partial_cmp(&t2.1 .0).unwrap());
-        Some(*targeted[0].0)
     }
 
     pub unsafe fn draw(&mut self, shader: &Shader) {
@@ -345,11 +331,35 @@ impl Game {
                 self.player.aircraft_mut().guns_mut().stop_firing();
             }
         }
-        key_pressed!(self.window, Key::Space, self.launch_missile())
+        key_pressed!(self.window, Key::Space, self.launch_missile());
+        key_pressed!(self.window, Key::K, self.switch_target());
     }
 
     pub fn player_mut(&mut self) -> &mut Player {
         &mut self.player
+    }
+
+    pub fn switch_target(&mut self) {
+        if self.last_target_switch_time + SWITCH_COOLDOWN > self.glfw.get_time() {
+            return;
+        }
+
+        match &self.targeting_data {
+            // If there's already a target, look for the new closest one
+            Some(_) => {
+                if let Some(new_id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
+                    self.targeting_data = Some(TargetingData::new(new_id));
+                }
+            },
+            // if there's no target, look for one and if it's present, switch to it
+            None => {
+                if let Some(id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
+                    self.targeting_data = Some(TargetingData::new(id))
+                }
+            }
+        }
+        
+        self.last_target_switch_time = self.glfw.get_time();
     }
 
     /// Perform all actions necessary to launch a missile.
@@ -360,14 +370,14 @@ impl Game {
         if self.last_launch_time + MISSILE_COOLDOWN > self.glfw.get_time() {
             return;
         }
-        if let Some(id) = self.targeted_enemy_id() {
-            let enemy = self.enemies.get_by_id(id);
+        if let Some(data) = &self.targeting_data {
+            let enemy = self.enemies.get_by_id(data.target_id);
             let missile = Missile::new(self.player.camera(), enemy);
             self.missiles.push(missile);
 
             self.audio.play(SoundEffect::MissileLaunch, false);
 
-            self.last_launch_time = self.glfw.get_time();
+            self.last_launch_time = unsafe { GLFW_TIME }
         }
     }
 
@@ -383,6 +393,7 @@ impl Game {
                 .or_else(|| None);
             if let Some(MissileMessage::HitEnemy(id)) = missile.update(enemy.as_deref()) {
                 shot_down.push(id);
+                self.targeting_data = None;
             }
         });
         shot_down

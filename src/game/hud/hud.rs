@@ -1,7 +1,7 @@
 use crate::{
     c_str,
     cg::{camera::Camera, model::Model},
-    game::{drawable::Drawable, enemies::Enemies, flight::steerable::Steerable, missile::EnemyID},
+    game::{drawable::Drawable, enemies::Enemies, flight::steerable::Steerable, missile::EnemyID, targeting_data::{TargetingData, self}},
     GLFW_TIME,
 };
 use cgmath::{vec3, Deg, InnerSpace, Matrix4, MetricSpace, SquareMatrix, Vector3};
@@ -41,13 +41,23 @@ impl Hud {
         }
     }
 
-    pub fn update(&mut self, camera: &Camera, enemies: &Enemies, target_id: Option<EnemyID>) {
+    pub fn update(&mut self, camera: &Camera, enemies: &Enemies, targeting_data: &Option<TargetingData>) {
         if self.last_update_time + UPDATE_INTERVAL > unsafe { GLFW_TIME } || !self.enabled {
             return;
         }
 
+        let target_id = {
+            if let Some(data) = targeting_data {
+                Some(data.target_id)
+            } else {
+                self.target_circle.set_scale(0.);
+                None
+            }
+        };
+
         self.target_rectangles
             .resize_with(enemies.map.len(), || TARGET_RECTANGLE.clone());
+
         self.target_rectangles
             .iter_mut()
             .zip(enemies.map.values())
@@ -67,11 +77,10 @@ impl Hud {
                     let scale = 1.0.div(distance_to_enemy).clamp(0.06, 0.3);
                     rect.set_translation(new_pos).set_scale(scale);
                     if target_id == Some(enemy.id()) {
+                        warn!("UPDATING TARGET");
                         self.target_circle
                             .set_translation(new_pos)
                             .set_scale(scale * 2.);
-                    } else {
-                        self.target_circle.set_scale(0.);
                     }
                 } else {
                     rect.set_scale(0.);
