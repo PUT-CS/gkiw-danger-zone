@@ -3,6 +3,7 @@ use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
 use crate::audio::messages::AudioMessage;
 use crate::game::targeting_data::{self, TargetingData};
 use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
+use crate::cg::light::DirectionalLight;
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
@@ -26,7 +27,8 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{ortho, vec3, Deg, InnerSpace, Matrix4, SquareMatrix, Vector3};
+use cgmath::ortho;
+use cgmath::{vec3, Deg, EuclideanSpace, InnerSpace, Matrix4, Point3, SquareMatrix, Vector3};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -53,6 +55,7 @@ pub struct Game {
     pub events: Receiver<(f64, WindowEvent)>,
     audio: Audio,
     hud: Hud,
+    directional_light: DirectionalLight,
 }
 
 impl Game {
@@ -125,6 +128,8 @@ impl Game {
         let mut skybox = Model::new("resources/objects/skybox/skybox.obj");
         skybox.set_scale(1000.);
 
+        let directional_light = DirectionalLight::new(Vector3::new(-0.2, -1., -0.3));
+
         let hud = Hud::new();
 
         let targeting_data = None;
@@ -143,6 +148,7 @@ impl Game {
             events,
             audio,
             hud,
+            directional_light,
         }
     }
 
@@ -158,6 +164,7 @@ impl Game {
                 .particle_generator_mut()
                 .update_particles(position, 1, front);
             let delta = unsafe { DELTA_TIME };
+
             // e.aircraft_mut().model_mut().forward(50. * delta);
             // e.aircraft_mut().model_mut().pitch(50. * delta);
             // e.aircraft_mut().model_mut().roll(50. * delta);
@@ -196,7 +203,23 @@ impl Game {
     pub unsafe fn draw(&mut self, shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
-
+	shader.set_int(c_str!("material.diffuse"), 0);
+	shader.set_int(c_str!("material.specular"), 1);
+	//set light position and properties
+	shader.set_vector3(c_str!("viewPos"), &self.player.camera().position().to_vec());
+        shader.set_vector3(
+            c_str!("dirLight.direction"),
+            &self.directional_light.direction,
+        );
+        shader.set_vector3(c_str!("dirLight.ambient"), &self.directional_light.ambient);
+        shader.set_vector3(c_str!("dirLight.diffuse"), &self.directional_light.diffuse);
+        shader.set_vector3(
+            c_str!("dirLight.specular"),
+            &self.directional_light.specular,
+        );
+	shader.set_int(c_str!("material.diffuse"), 0);
+	shader.set_int(c_str!("material.specular"), 1);
+	
         shader.set_mat4(
             c_str!("projection"),
             &self.player.camera().projection_matrix(),

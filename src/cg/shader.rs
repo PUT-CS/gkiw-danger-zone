@@ -83,6 +83,14 @@ impl Shader {
     pub unsafe fn set_vector4(&self, name: &CStr, value: &Vector4<f32>) {
         gl::Uniform4fv(gl::GetUniformLocation(self.id, name.as_ptr()), 1, value.as_ptr());
     }
+
+    pub unsafe fn set_float(&self, name: &CStr, value: f32) {
+        gl::Uniform1f(gl::GetUniformLocation(self.id, name.as_ptr()), value);
+    }
+
+    pub unsafe fn set_int(&self, name: &CStr, value: i32) {
+        gl::Uniform1i(gl::GetUniformLocation(self.id, name.as_ptr()), value);
+    }
     
     unsafe fn check_compile_errors(&self, shader: u32, type_: &str) {
         let mut success = gl::FALSE as GLint;

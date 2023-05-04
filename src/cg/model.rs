@@ -1,6 +1,7 @@
 use super::consts::VEC_FRONT;
 use super::consts::VEC_RIGHT;
 use super::consts::VEC_UP;
+use super::light::Material;
 use super::particles::ParticleGenerator;
 use super::texture::Texture;
 use super::transformation::Transformation;
@@ -46,6 +47,7 @@ pub struct Model {
     directory: String,
     pub transformation: Transformation,
     pub orientation: Quaternion<f32>,
+    material: Material,
 }
 
 impl Default for Model {
@@ -61,6 +63,7 @@ impl Default for Model {
             transformation: Transformation::default(),
             orientation: Quaternion::from_angle_x(Deg(0.)),
             directory: String::new(),
+	    material: Material::new(),
         }
     }
 }
@@ -99,10 +102,14 @@ impl Drawable for Model {
             );
             panic!("Attempt to draw a model that was not loaded");
         }
-
+	
         let matrix = self.build_model_matrix();
         shader.set_mat4(c_str!("model"), &matrix);
-
+        shader.set_mat4(c_str!("inverseModel"), &matrix.invert().unwrap());
+	// set material properties
+	shader.set_vector3(c_str!("material.diffuse"), &self.material.diffuse);
+	shader.set_vector3(c_str!("material.specular"), &self.material.specular);
+	shader.set_float(c_str!("material.shininess"), self.material.shininess);
         // bind appropriate textures
         let mut diffuse_nr = 0;
         let mut specular_nr = 0;

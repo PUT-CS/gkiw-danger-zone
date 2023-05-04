@@ -25,8 +25,8 @@ fn main() {
     let mut game = Game::new();
 
     let shader = Shader::new(
-        "src/shaders/model.vs",
-        "src/shaders/fragment_transparent.fs",
+        "src/shaders/light.vs",
+        "src/shaders/light.fs",
     );
 
     while !game.window.should_close() {
