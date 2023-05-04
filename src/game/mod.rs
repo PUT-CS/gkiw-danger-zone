@@ -12,3 +12,5 @@ pub mod missile_guidance;
 pub mod particle_generation;
 pub mod modeled;
 pub mod guns;
+pub mod hud;
+pub mod targeting_data;
