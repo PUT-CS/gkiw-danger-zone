@@ -1,9 +1,9 @@
 use crate::audio::audio::Audio;
 use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
 use crate::audio::messages::AudioMessage;
+use crate::cg::light::{DirectionalLight, PointLight};
 use crate::game::targeting_data::{self, TargetingData};
 use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
-use crate::cg::light::DirectionalLight;
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
@@ -56,6 +56,7 @@ pub struct Game {
     audio: Audio,
     hud: Hud,
     directional_light: DirectionalLight,
+    point_light: PointLight,
 }
 
 impl Game {
@@ -130,6 +131,8 @@ impl Game {
 
         let directional_light = DirectionalLight::new(Vector3::new(-0.2, -1., -0.3));
 
+        let point_light = PointLight::new(Point3::new(0.5, 0.0, 0.5));
+
         let hud = Hud::new();
 
         let targeting_data = None;
@@ -149,11 +152,14 @@ impl Game {
             audio,
             hud,
             directional_light,
+            point_light,
         }
     }
 
     /// Compute new positions of all game objects based on input and state of the game
     pub fn update(&mut self) {
+	//dbg!(&self.player.aircraft().model().position());
+	//dbg!(&self.player.camera().position());
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
@@ -188,11 +194,8 @@ impl Game {
         {
             self.enemies.map.retain(|id, _| !hit_enemies.contains(id));
         }
-        self.hud.update(
-            &self.player.camera(),
-            &self.enemies,
-            &self.targeting_data
-        );
+        self.hud
+            .update(&self.player.camera(), &self.enemies, &self.targeting_data);
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
@@ -203,10 +206,10 @@ impl Game {
     pub unsafe fn draw(&mut self, shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
-	shader.set_int(c_str!("material.diffuse"), 0);
-	shader.set_int(c_str!("material.specular"), 1);
-	//set light position and properties
-	shader.set_vector3(c_str!("viewPos"), &self.player.camera().position().to_vec());
+        shader.set_int(c_str!("material.diffuse"), 0);
+        shader.set_int(c_str!("material.specular"), 1);
+        //set light position and properties
+        shader.set_vector3(c_str!("viewPos"), &self.player.camera().position().to_vec());
         shader.set_vector3(
             c_str!("dirLight.direction"),
             &self.directional_light.direction,
@@ -217,9 +220,19 @@ impl Game {
             c_str!("dirLight.specular"),
             &self.directional_light.specular,
         );
-	shader.set_int(c_str!("material.diffuse"), 0);
-	shader.set_int(c_str!("material.specular"), 1);
-	
+        //point light
+        let light_position =
+            self.player.camera().position.to_vec() + self.point_light.position.to_vec();
+        shader.set_vector3(c_str!("pointLight.position"), &light_position);
+
+        shader.set_float(c_str!("pointLight.constant"), self.point_light.constant);
+        shader.set_float(c_str!("pointLight.linear"), self.point_light.linear);
+        shader.set_float(c_str!("pointLight.quadratic"), self.point_light.quadratic);
+
+        shader.set_vector3(c_str!("pointLight.ambient"), &self.point_light.ambient);
+        shader.set_vector3(c_str!("pointLight.diffuse"), &self.point_light.diffuse);
+        shader.set_vector3(c_str!("pointLight.specular"), &self.point_light.specular);
+
         shader.set_mat4(
             c_str!("projection"),
             &self.player.camera().projection_matrix(),
@@ -373,7 +386,7 @@ impl Game {
                 if let Some(new_id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
                     self.targeting_data = Some(TargetingData::new(new_id));
                 }
-            },
+            }
             // if there's no target, look for one and if it's present, switch to it
             None => {
                 if let Some(id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
@@ -381,7 +394,7 @@ impl Game {
                 }
             }
         }
-        
+
         self.last_target_switch_time = self.glfw.get_time();
     }
 
