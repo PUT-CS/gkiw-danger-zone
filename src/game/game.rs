@@ -1,7 +1,7 @@
 use crate::audio::audio::Audio;
 use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
 use crate::audio::messages::AudioMessage;
-use crate::cg::light::DirectionalLight;
+use crate::cg::light::{DirectionalLight, PointLight};
 use crate::game::targeting_data::{self, TargetingData};
 use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
@@ -56,6 +56,7 @@ pub struct Game {
     audio: Audio,
     hud: Hud,
     directional_light: DirectionalLight,
+    point_light: PointLight,
 }
 
 impl Game {
@@ -130,6 +131,8 @@ impl Game {
 
         let directional_light = DirectionalLight::new(Vector3::new(-0.2, -1., -0.3));
 
+        let point_light = PointLight::new(Point3::new(0.5, 0.0, 0.5));
+
         let hud = Hud::new();
 
         let targeting_data = None;
@@ -149,11 +152,14 @@ impl Game {
             audio,
             hud,
             directional_light,
+            point_light,
         }
     }
 
     /// Compute new positions of all game objects based on input and state of the game
     pub fn update(&mut self) {
+	//dbg!(&self.player.aircraft().model().position());
+	//dbg!(&self.player.camera().position());
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
@@ -240,6 +246,18 @@ impl Game {
         );
         shader.set_int(c_str!("material.diffuse"), 0);
         shader.set_int(c_str!("material.specular"), 1);
+        //point light
+        let light_position =
+            self.player.camera().position.to_vec() + self.point_light.position.to_vec();
+        shader.set_vector3(c_str!("pointLight.position"), &light_position);
+
+        shader.set_float(c_str!("pointLight.constant"), self.point_light.constant);
+        shader.set_float(c_str!("pointLight.linear"), self.point_light.linear);
+        shader.set_float(c_str!("pointLight.quadratic"), self.point_light.quadratic);
+
+        shader.set_vector3(c_str!("pointLight.ambient"), &self.point_light.ambient);
+        shader.set_vector3(c_str!("pointLight.diffuse"), &self.point_light.diffuse);
+        shader.set_vector3(c_str!("pointLight.specular"), &self.point_light.specular);
 
         shader.set_mat4(
             c_str!("projection"),
