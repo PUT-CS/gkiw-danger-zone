@@ -1,6 +1,3 @@
-use cgmath::{vec3, InnerSpace, Rotation};
-use itertools::Itertools;
-use log::{error, warn};
 use super::enemies::Enemies;
 use super::flight::aircraft::{Aircraft, AircraftKind};
 use super::missile::EnemyID;
@@ -15,13 +12,15 @@ use crate::{
     },
     DELTA_TIME,
 };
+use cgmath::{vec3, InnerSpace, Rotation};
+use itertools::Itertools;
+use log::{error, warn};
 
 #[derive(Debug)]
 pub struct Player {
     aircraft: Aircraft,
     camera: Camera,
     pub cockpit: Model,
-    kills: u32,
     pub guns_sound: SoundID,
 }
 
@@ -29,7 +28,6 @@ gen_ref_getters! {
     Player,
     aircraft -> &Aircraft,
     camera -> &Camera,
-    kills -> &u32,
 }
 
 impl Default for Player {
@@ -37,7 +35,6 @@ impl Default for Player {
         Player {
             aircraft: Aircraft::new(AircraftKind::Mig21),
             camera: Camera::default(),
-            kills: 0,
             cockpit: Model::new("resources/objects/cockpit/cockpit_old.obj"),
             guns_sound: SoundID::MAX,
         }
@@ -49,7 +46,6 @@ impl Player {
         Player {
             aircraft: Aircraft::new(aircraft_kind),
             camera: Camera::default(),
-            kills: 0,
             cockpit: Model::new("resources/objects/cockpit/cockpit.obj"),
             guns_sound: SoundID::MAX,
         }
@@ -97,15 +93,15 @@ impl Player {
                 warn!("Requested enemy {n}, but there are only {}. Returning the last enemy available", enemies.len());
             }
             let id = enemies.get(n).unwrap_or_else(|| enemies.last().unwrap());
-            return Some(*id)
+            return Some(*id);
         }
         None
     }
 
-    fn targetable_enemies(&self, enemies: &Enemies) -> Option<Vec<EnemyID>> {
+    pub fn targetable_enemies(&self, enemies: &Enemies) -> Option<Vec<EnemyID>> {
         let player_front = self.camera().front;
         let player_position = self.camera().position;
-        
+
         let targeted = enemies
             .map
             .iter()
@@ -124,7 +120,7 @@ impl Player {
             None
         } else {
             Some(targeted)
-        }
+        };
     }
 
     /// Handle key events meant for player controls.

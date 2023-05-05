@@ -1,9 +1,9 @@
 use crate::audio::audio::Audio;
 use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
 use crate::audio::messages::AudioMessage;
+use crate::cg::light::DirectionalLight;
 use crate::game::targeting_data::{self, TargetingData};
 use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
-use crate::cg::light::DirectionalLight;
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
 use itertools::Itertools;
@@ -187,12 +187,11 @@ impl Game {
             .check_collisions(&self.enemies)
         {
             self.enemies.map.retain(|id, _| !hit_enemies.contains(id));
+            self.targeting_data = None;
         }
-        self.hud.update(
-            &self.player.camera(),
-            &self.enemies,
-            &self.targeting_data
-        );
+        self.update_targeting();
+        self.hud
+            .update(&self.player.camera(), &self.enemies, &self.targeting_data);
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
@@ -200,13 +199,35 @@ impl Game {
         self.enemies.respawn_enemies();
     }
 
+    /// If there's an enemy being targeted, countdown the lock time
+    fn update_targeting(&mut self) {
+        match &mut self.targeting_data {
+            // no lock yet
+            Some(data) if data.left_until_lock > 0. => {
+                data.left_until_lock -= unsafe { DELTA_TIME as f64 };
+            }
+            _ => {}
+        }
+        if let Some(data) = &self.targeting_data {
+            if !self
+                .player
+                .targetable_enemies(&self.enemies)
+                .unwrap_or_else(|| vec![])
+                .contains(&data.target_id)
+            {
+                warn!("Target lost");
+                self.targeting_data = None;
+            }
+        }
+    }
+
     pub unsafe fn draw(&mut self, shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
-	shader.set_int(c_str!("material.diffuse"), 0);
-	shader.set_int(c_str!("material.specular"), 1);
-	//set light position and properties
-	shader.set_vector3(c_str!("viewPos"), &self.player.camera().position().to_vec());
+        shader.set_int(c_str!("material.diffuse"), 0);
+        shader.set_int(c_str!("material.specular"), 1);
+        //set light position and properties
+        shader.set_vector3(c_str!("viewPos"), &self.player.camera().position().to_vec());
         shader.set_vector3(
             c_str!("dirLight.direction"),
             &self.directional_light.direction,
@@ -217,9 +238,9 @@ impl Game {
             c_str!("dirLight.specular"),
             &self.directional_light.specular,
         );
-	shader.set_int(c_str!("material.diffuse"), 0);
-	shader.set_int(c_str!("material.specular"), 1);
-	
+        shader.set_int(c_str!("material.diffuse"), 0);
+        shader.set_int(c_str!("material.specular"), 1);
+
         shader.set_mat4(
             c_str!("projection"),
             &self.player.camera().projection_matrix(),
@@ -373,7 +394,7 @@ impl Game {
                 if let Some(new_id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
                     self.targeting_data = Some(TargetingData::new(new_id));
                 }
-            },
+            }
             // if there's no target, look for one and if it's present, switch to it
             None => {
                 if let Some(id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
@@ -381,7 +402,7 @@ impl Game {
                 }
             }
         }
-        
+
         self.last_target_switch_time = self.glfw.get_time();
     }
 
@@ -394,6 +415,12 @@ impl Game {
             return;
         }
         if let Some(data) = &self.targeting_data {
+            // targeting, but no lock yet
+            if data.left_until_lock > 0. {
+                warn!("No lock");
+                self.last_launch_time = unsafe { GLFW_TIME };
+                return;
+            }
             let enemy = self.enemies.get_by_id(data.target_id);
             let missile = Missile::new(self.player.camera(), enemy);
             self.missiles.push(missile);
