@@ -227,7 +227,7 @@ impl Game {
         }
     }
 
-    pub unsafe fn draw(&mut self, shader: &Shader) {
+    pub unsafe fn draw(&mut self, shader: &Shader, hud_shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
         shader.set_int(c_str!("material.diffuse"), 0);
@@ -289,7 +289,8 @@ impl Game {
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
         self.player.cockpit.draw(&shader);
 
-        self.hud.draw(shader);
+	hud_shader.use_program();
+        self.hud.draw(hud_shader);
     }
 
     pub fn process_events(

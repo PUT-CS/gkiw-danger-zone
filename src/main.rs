@@ -29,6 +29,11 @@ fn main() {
         "src/shaders/light.fs",
     );
 
+    let hud_shader = Shader::new(
+	"src/shaders/model.vs",
+	"src/shaders/fragment_transparent.fs",
+    );
+    
     while !game.window.should_close() {
         unsafe {GLFW_TIME = game.glfw.get_time()}
         let current_frame = game.glfw.get_time() as f32;
@@ -39,7 +44,7 @@ fn main() {
 
         unsafe {
             game.update();
-            game.draw(&shader);
+            game.draw(&shader, &hud_shader);
         }
 
         game.window.swap_buffers();
