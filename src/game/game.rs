@@ -1,15 +1,15 @@
 use crate::audio::audio::Audio;
-use crate::audio::audio_manager::{AudioManager, SoundEffect, SOUNDS};
+use crate::audio::audio_manager::{AudioManager, SoundEffect};
 use crate::audio::messages::AudioMessage;
 use crate::cg::light::{DirectionalLight, PointLight};
-use crate::game::targeting_data::{self, TargetingData};
+use crate::game::targeting_data::TargetingData;
 use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
-use itertools::Itertools;
-use log::{error, info, warn};
+use log::{info, warn};
 use rayon::ThreadPoolBuilder;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::ops::Not;
+use std::sync::mpsc::{self, Receiver};
 extern crate glfw;
 use self::glfw::{Action, Key};
 use super::enemies::Enemies;
@@ -18,6 +18,7 @@ use super::missile::{EnemyID, MissileMessage};
 use super::missile_guidance::GuidanceStatus;
 use super::modeled::Modeled;
 use super::particle_generation::ParticleGeneration;
+use super::targeting_sounds::TargetingSounds;
 use super::terrain::Terrain;
 use super::{missile::Missile, player::Player};
 use crate::c_str;
@@ -27,8 +28,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::ortho;
-use cgmath::{vec3, Deg, EuclideanSpace, InnerSpace, Matrix4, Point3, SquareMatrix, Vector3};
+use cgmath::{vec3, Deg, EuclideanSpace, Matrix4, Point3, SquareMatrix, Vector3};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -50,6 +50,7 @@ pub struct Game {
     last_launch_time: f64,
     last_target_switch_time: f64,
     targeting_data: Option<TargetingData>,
+    targeting_sounds: TargetingSounds,
     pub glfw: Glfw,
     pub window: Window,
     pub events: Receiver<(f64, WindowEvent)>,
@@ -137,6 +138,9 @@ impl Game {
 
         let targeting_data = None;
 
+        let mut targeting_sounds = TargetingSounds::new();
+        targeting_sounds.play(SoundEffect::Seeking, &audio);
+
         Game {
             player,
             enemies,
@@ -146,6 +150,7 @@ impl Game {
             last_target_switch_time: glfw.get_time() - SWITCH_COOLDOWN,
             last_launch_time: glfw.get_time() - MISSILE_COOLDOWN,
             targeting_data,
+            targeting_sounds,
             glfw,
             window,
             events,
@@ -158,8 +163,6 @@ impl Game {
 
     /// Compute new positions of all game objects based on input and state of the game
     pub fn update(&mut self) {
-	//dbg!(&self.player.aircraft().model().position());
-	//dbg!(&self.player.camera().position());
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
@@ -211,17 +214,21 @@ impl Game {
             // no lock yet
             Some(data) if data.left_until_lock > 0. => {
                 data.left_until_lock -= unsafe { DELTA_TIME as f64 };
+                if data.left_until_lock < 0. {
+                    self.targeting_sounds.play(SoundEffect::Locked, &self.audio);
+                }
             }
             _ => {}
         }
         if let Some(data) = &self.targeting_data {
-            if !self
+            if self
                 .player
                 .targetable_enemies(&self.enemies)
                 .unwrap_or_else(|| vec![])
-                .contains(&data.target_id)
+                .contains(&data.target_id).not()
             {
                 warn!("Target lost");
+                self.targeting_sounds.play(SoundEffect::Seeking, &self.audio);
                 self.targeting_data = None;
             }
         }
@@ -298,7 +305,6 @@ impl Game {
         first_mouse: &mut bool,
         last_x: &mut f32,
         last_y: &mut f32,
-        //camera: &mut Camera,
     ) {
         for (_, event) in glfw::flush_messages(&self.events) {
             match event {
@@ -406,22 +412,10 @@ impl Game {
         if self.last_target_switch_time + SWITCH_COOLDOWN > self.glfw.get_time() {
             return;
         }
-
-        match &self.targeting_data {
-            // If there's already a target, look for the new closest one
-            Some(_) => {
-                if let Some(new_id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
-                    self.targeting_data = Some(TargetingData::new(new_id));
-                }
-            }
-            // if there's no target, look for one and if it's present, switch to it
-            None => {
-                if let Some(id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
-                    self.targeting_data = Some(TargetingData::new(id))
-                }
-            }
+        if let Some(new_id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
+            self.targeting_data = Some(TargetingData::new(new_id));
+            self.targeting_sounds.play(SoundEffect::Locking, &self.audio);
         }
-
         self.last_target_switch_time = self.glfw.get_time();
     }
 
@@ -434,7 +428,6 @@ impl Game {
             return;
         }
         if let Some(data) = &self.targeting_data {
-            // targeting, but no lock yet
             if data.left_until_lock > 0. {
                 warn!("No lock");
                 self.last_launch_time = unsafe { GLFW_TIME };
@@ -443,8 +436,9 @@ impl Game {
             let enemy = self.enemies.get_by_id(data.target_id);
             let missile = Missile::new(self.player.camera(), enemy);
             self.missiles.push(missile);
-
+            
             self.audio.play(SoundEffect::MissileLaunch, false);
+            self.targeting_sounds.play(SoundEffect::Seeking, &self.audio);
 
             self.last_launch_time = unsafe { GLFW_TIME }
         }

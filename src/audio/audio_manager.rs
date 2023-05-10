@@ -18,6 +18,9 @@ pub enum SoundEffect {
     CockpitAmbient,
     MissileLaunch,
     Guns,
+    Seeking,
+    Locking,
+    Locked
 }
 
 lazy_static! {
@@ -31,7 +34,10 @@ lazy_static! {
             SoundEffect::MissileLaunch,
             "resources/sounds/missile_launch.mp3"
         ),
-        (SoundEffect::Guns, "resources/sounds/gun.mp3")
+        (SoundEffect::Guns, "resources/sounds/gun.mp3"),
+        (SoundEffect::Seeking, "resources/sounds/seeking.mp3"),
+        (SoundEffect::Locking, "resources/sounds/locking.mp3"),
+        (SoundEffect::Locked, "resources/sounds/locked.mp3"),
     ]);
 }
 
