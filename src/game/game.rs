@@ -132,7 +132,7 @@ impl Game {
 
         let directional_light = DirectionalLight::new(Vector3::new(-0.2, -1., -0.3));
 
-        let point_light = PointLight::new(Point3::new(0.5, 0.0, 0.5));
+        let point_light = PointLight::new(Point3::new(0., 0.1, 0.3));
 
         let hud = Hud::new();
 
@@ -173,7 +173,7 @@ impl Game {
                 .particle_generator_mut()
                 .update_particles(position, 1, front);
             let delta = unsafe { DELTA_TIME };
-
+	    e.fly();
             // e.aircraft_mut().model_mut().forward(50. * delta);
             // e.aircraft_mut().model_mut().pitch(50. * delta);
             // e.aircraft_mut().model_mut().roll(50. * delta);
@@ -254,9 +254,7 @@ impl Game {
         shader.set_int(c_str!("material.diffuse"), 0);
         shader.set_int(c_str!("material.specular"), 1);
         //point light
-        let light_position =
-            self.player.camera().position.to_vec() + self.point_light.position.to_vec();
-        shader.set_vector3(c_str!("pointLight.position"), &light_position);
+        shader.set_vector3(c_str!("pointLight.position"), &self.point_light.position.to_vec());
 
         shader.set_float(c_str!("pointLight.constant"), self.point_light.constant);
         shader.set_float(c_str!("pointLight.linear"), self.point_light.linear);
