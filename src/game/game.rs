@@ -234,11 +234,9 @@ impl Game {
         }
     }
 
-    pub unsafe fn draw(&mut self, shader: &Shader, hud_shader: &Shader) {
+    pub unsafe fn draw(&mut self, shader: &Shader, hud_shader: &Shader, particle_shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         shader.use_program();
-        shader.set_int(c_str!("material.diffuse"), 0);
-        shader.set_int(c_str!("material.specular"), 1);
         //set light position and properties
         shader.set_vector3(c_str!("viewPos"), &self.player.camera().position().to_vec());
         shader.set_vector3(
@@ -251,8 +249,6 @@ impl Game {
             c_str!("dirLight.specular"),
             &self.directional_light.specular,
         );
-        shader.set_int(c_str!("material.diffuse"), 0);
-        shader.set_int(c_str!("material.specular"), 1);
         //point light
         shader.set_vector3(c_str!("pointLight.position"), &self.point_light.position.to_vec());
 
