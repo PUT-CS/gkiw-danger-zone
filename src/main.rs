@@ -35,7 +35,7 @@ fn main() {
     );
 
     let particle_shader = Shader::new(
-	"src/shaders/no_light_vs.glsl",
+	"src/shaders/particle_vs.glsl",
 	"src/shaders/particle_fs.glsl",
     );
 

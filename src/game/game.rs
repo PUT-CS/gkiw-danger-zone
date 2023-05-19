@@ -28,7 +28,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{vec3, Deg, EuclideanSpace, Matrix4, Point3, SquareMatrix, Vector3};
+use cgmath::{vec3, Deg, EuclideanSpace, Matrix4, Point3, SquareMatrix, Vector3, Vector4};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -173,7 +173,7 @@ impl Game {
                 .particle_generator_mut()
                 .update_particles(position, 1, front);
             let delta = unsafe { DELTA_TIME };
-	    e.fly();
+            e.fly();
             // e.aircraft_mut().model_mut().forward(50. * delta);
             // e.aircraft_mut().model_mut().pitch(50. * delta);
             // e.aircraft_mut().model_mut().roll(50. * delta);
@@ -225,10 +225,12 @@ impl Game {
                 .player
                 .targetable_enemies(&self.enemies)
                 .unwrap_or_else(|| vec![])
-                .contains(&data.target_id).not()
+                .contains(&data.target_id)
+                .not()
             {
                 warn!("Target lost");
-                self.targeting_sounds.play(SoundEffect::Seeking, &self.audio);
+                self.targeting_sounds
+                    .play(SoundEffect::Seeking, &self.audio);
                 self.targeting_data = None;
             }
         }
@@ -236,30 +238,23 @@ impl Game {
 
     pub unsafe fn draw(&mut self, shader: &Shader, hud_shader: &Shader, particle_shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        particle_shader.use_program();
+		self.setup_point_light(shader);
+        particle_shader.set_mat4(
+            c_str!("projection"),
+            &self.player.camera().projection_matrix(),
+        );
+        particle_shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
+        particle_shader.set_vector4(c_str!("ParticleColor"), &Vector4::new(1., 0., 1., 1.));
+        self.enemies.map.values_mut().for_each(|e| {
+            e.aircraft_mut().draw_particles(particle_shader);
+        });
+
         shader.use_program();
         //set light position and properties
-        shader.set_vector3(c_str!("viewPos"), &self.player.camera().position().to_vec());
-        shader.set_vector3(
-            c_str!("dirLight.direction"),
-            &self.directional_light.direction,
-        );
-        shader.set_vector3(c_str!("dirLight.ambient"), &self.directional_light.ambient);
-        shader.set_vector3(c_str!("dirLight.diffuse"), &self.directional_light.diffuse);
-        shader.set_vector3(
-            c_str!("dirLight.specular"),
-            &self.directional_light.specular,
-        );
+        self.setup_directional_light(shader);
         //point light
-        shader.set_vector3(c_str!("pointLight.position"), &self.point_light.position.to_vec());
-
-        shader.set_float(c_str!("pointLight.constant"), self.point_light.constant);
-        shader.set_float(c_str!("pointLight.linear"), self.point_light.linear);
-        shader.set_float(c_str!("pointLight.quadratic"), self.point_light.quadratic);
-
-        shader.set_vector3(c_str!("pointLight.ambient"), &self.point_light.ambient);
-        shader.set_vector3(c_str!("pointLight.diffuse"), &self.point_light.diffuse);
-        shader.set_vector3(c_str!("pointLight.specular"), &self.point_light.specular);
-
+	self.setup_point_light(shader);
         shader.set_mat4(
             c_str!("projection"),
             &self.player.camera().projection_matrix(),
@@ -281,6 +276,7 @@ impl Game {
         });
         self.player.aircraft().guns().draw(shader);
 
+        shader.use_program();
         let time = self.glfw.get_time() as f32 * 2.0;
         self.player.cockpit_mut().set_translation(vec3(
             time.sin() * 0.003,
@@ -290,16 +286,11 @@ impl Game {
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
         self.player.cockpit.draw(&shader);
 
-	hud_shader.use_program();
+        hud_shader.use_program();
         self.hud.draw(hud_shader);
     }
 
-    pub fn process_events(
-        &mut self,
-        first_mouse: &mut bool,
-        last_x: &mut f32,
-        last_y: &mut f32,
-    ) {
+    pub fn process_events(&mut self, first_mouse: &mut bool, last_x: &mut f32, last_y: &mut f32) {
         for (_, event) in glfw::flush_messages(&self.events) {
             match event {
                 glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
@@ -408,7 +399,8 @@ impl Game {
         }
         if let Some(new_id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
             self.targeting_data = Some(TargetingData::new(new_id));
-            self.targeting_sounds.play(SoundEffect::Locking, &self.audio);
+            self.targeting_sounds
+                .play(SoundEffect::Locking, &self.audio);
         }
         self.last_target_switch_time = self.glfw.get_time();
     }
@@ -430,9 +422,10 @@ impl Game {
             let enemy = self.enemies.get_by_id(data.target_id);
             let missile = Missile::new(self.player.camera(), enemy);
             self.missiles.push(missile);
-            
+
             self.audio.play(SoundEffect::MissileLaunch, false);
-            self.targeting_sounds.play(SoundEffect::Seeking, &self.audio);
+            self.targeting_sounds
+                .play(SoundEffect::Seeking, &self.audio);
 
             self.last_launch_time = unsafe { GLFW_TIME }
         }
@@ -463,5 +456,34 @@ impl Game {
 
     pub fn exit_hook(&mut self) {
         self.audio.exit_hook();
+    }
+
+    pub unsafe fn setup_directional_light(&self, shader: &Shader) {
+        shader.set_vector3(c_str!("viewPos"), &self.player.camera().position().to_vec());
+        shader.set_vector3(
+            c_str!("dirLight.direction"),
+            &self.directional_light.direction,
+        );
+        shader.set_vector3(c_str!("dirLight.ambient"), &self.directional_light.ambient);
+        shader.set_vector3(c_str!("dirLight.diffuse"), &self.directional_light.diffuse);
+        shader.set_vector3(
+            c_str!("dirLight.specular"),
+            &self.directional_light.specular,
+        );
+    }
+
+    pub unsafe fn setup_point_light(&self, shader: &Shader) {
+        shader.set_vector3(
+            c_str!("pointLight.position"),
+            &self.point_light.position.to_vec(),
+        );
+
+        shader.set_float(c_str!("pointLight.constant"), self.point_light.constant);
+        shader.set_float(c_str!("pointLight.linear"), self.point_light.linear);
+        shader.set_float(c_str!("pointLight.quadratic"), self.point_light.quadratic);
+
+        shader.set_vector3(c_str!("pointLight.ambient"), &self.point_light.ambient);
+        shader.set_vector3(c_str!("pointLight.diffuse"), &self.point_light.diffuse);
+        shader.set_vector3(c_str!("pointLight.specular"), &self.point_light.specular);
     }
 }
