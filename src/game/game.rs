@@ -6,9 +6,12 @@ use crate::game::targeting_data::TargetingData;
 use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
+use itertools::{Itertools, MinMaxResult};
 use log::{info, warn};
+use num::integer::Roots;
 use rayon::ThreadPoolBuilder;
-use std::ops::Not;
+use std::collections::{HashMap, HashSet};
+use std::ops::{Div, Mul, Not};
 use std::sync::mpsc::{self, Receiver};
 extern crate glfw;
 use self::glfw::{Action, Key};
@@ -28,7 +31,9 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{vec3, Deg, EuclideanSpace, Matrix4, Point3, SquareMatrix, Vector3};
+use cgmath::{
+    vec3, Deg, EuclideanSpace, Matrix4, MetricSpace, Point2, Point3, SquareMatrix, Vector3,
+};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -111,10 +116,7 @@ impl Game {
         });
 
         let mut terrain = Terrain::default();
-        terrain
-            .model
-            .set_scale(0.05)
-            .set_translation(vec3(0.0, -150., 0.0));
+        terrain.model.set_translation(vec3(0.0, -150., 0.0));
 
         let mut player = Player::default();
         audio.play(SoundEffect::CockpitAmbient, true);
@@ -163,6 +165,14 @@ impl Game {
 
     /// Compute new positions of all game objects based on input and state of the game
     pub fn update(&mut self) {
+        // terrain collisions
+        if self.player.camera().altitude() < self.terrain.height_at(&self.player.camera().xz_ints())
+        {
+            //log::error!("Collision");
+        } else {
+            //log::info!("OK")
+        }
+
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
@@ -225,10 +235,12 @@ impl Game {
                 .player
                 .targetable_enemies(&self.enemies)
                 .unwrap_or_else(|| vec![])
-                .contains(&data.target_id).not()
+                .contains(&data.target_id)
+                .not()
             {
                 warn!("Target lost");
-                self.targeting_sounds.play(SoundEffect::Seeking, &self.audio);
+                self.targeting_sounds
+                    .play(SoundEffect::Seeking, &self.audio);
                 self.targeting_data = None;
             }
         }
@@ -296,16 +308,11 @@ impl Game {
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
         self.player.cockpit.draw(&shader);
 
-	hud_shader.use_program();
+        hud_shader.use_program();
         self.hud.draw(hud_shader);
     }
 
-    pub fn process_events(
-        &mut self,
-        first_mouse: &mut bool,
-        last_x: &mut f32,
-        last_y: &mut f32,
-    ) {
+    pub fn process_events(&mut self, first_mouse: &mut bool, last_x: &mut f32, last_y: &mut f32) {
         for (_, event) in glfw::flush_messages(&self.events) {
             match event {
                 glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
@@ -414,7 +421,8 @@ impl Game {
         }
         if let Some(new_id) = self.player.targeted_enemy_id_nth(&self.enemies, 0) {
             self.targeting_data = Some(TargetingData::new(new_id));
-            self.targeting_sounds.play(SoundEffect::Locking, &self.audio);
+            self.targeting_sounds
+                .play(SoundEffect::Locking, &self.audio);
         }
         self.last_target_switch_time = self.glfw.get_time();
     }
@@ -436,9 +444,10 @@ impl Game {
             let enemy = self.enemies.get_by_id(data.target_id);
             let missile = Missile::new(self.player.camera(), enemy);
             self.missiles.push(missile);
-            
+
             self.audio.play(SoundEffect::MissileLaunch, false);
-            self.targeting_sounds.play(SoundEffect::Seeking, &self.audio);
+            self.targeting_sounds
+                .play(SoundEffect::Seeking, &self.audio);
 
             self.last_launch_time = unsafe { GLFW_TIME }
         }

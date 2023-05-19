@@ -6,13 +6,14 @@ use crate::{
         enemies::Enemies,
         flight::steerable::Steerable,
         missile::EnemyID,
-        targeting_data::{self, TargetingData},
+        targeting_data::{self, TargetingData}, terrain::Terrain,
     },
     GLFW_TIME,
 };
-use cgmath::{vec3, Deg, InnerSpace, Matrix4, MetricSpace, SquareMatrix, Vector3};
+use cgmath::{vec3, Deg, InnerSpace, Matrix4, MetricSpace, SquareMatrix, Vector3, EuclideanSpace};
 use lazy_static::{__Deref, lazy_static};
 use log::warn;
+use vek::{QuadraticBezier2, QuadraticBezier3, Vec3};
 use std::{
     ffi::CStr,
     ops::{Div, Mul},
@@ -78,7 +79,7 @@ impl Hud {
             if vec_to_enemy.angle(camera.front) > Deg(100.).into() {
                 continue;
             }
-
+            
             let element_pos = {
                 let clip_space = camera.projection_matrix()
                     * camera.view_matrix()
