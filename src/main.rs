@@ -25,15 +25,20 @@ fn main() {
     let mut game = Game::new();
 
     let shader = Shader::new(
-        "src/shaders/light.vs",
-        "src/shaders/light.fs",
+        "src/shaders/light_vs.glsl",
+        "src/shaders/light_fs.glsl",
     );
 
     let hud_shader = Shader::new(
-	"src/shaders/model.vs",
-	"src/shaders/fragment_transparent.fs",
+	"src/shaders/no_light_vs.glsl",
+	"src/shaders/no_light_fs.glsl",
     );
-    
+
+    let particle_shader = Shader::new(
+	"src/shaders/particle_vs.glsl",
+	"src/shaders/particle_fs.glsl",
+    );
+
     while !game.window.should_close() {
         unsafe {GLFW_TIME = game.glfw.get_time()}
         let current_frame = game.glfw.get_time() as f32;
@@ -44,7 +49,7 @@ fn main() {
 
         unsafe {
             game.update();
-            game.draw(&shader, &hud_shader);
+            game.draw(&shader, &hud_shader, &particle_shader);
         }
 
         game.window.swap_buffers();

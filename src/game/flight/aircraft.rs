@@ -82,7 +82,7 @@ impl Aircraft {
         info!("Creating new Aircraft of kind : {kind:?}");
         let model = Model::new(MODEL_PATHS.get(&kind).expect("Path not found for kind"));
         let mut particle_generator = ParticleGenerator::new(1500, Vector4::new(1., 0., 0., 1.), 2.);
-        particle_generator.disable();
+        //particle_generator.disable();
         Aircraft {
             model,
             spec: BLUEPRINTS
