@@ -95,9 +95,11 @@ impl Aircraft {
             guns: Guns::new(),
         }
     }
+
     pub fn controls_mut(&mut self) -> &mut Controls {
         &mut self.controls
     }
+    
     pub fn model_mut(&mut self) -> &mut Model {
         &mut self.model
     }
@@ -131,13 +133,13 @@ impl Aircraft {
     pub fn throttle_up(&mut self) {
         let delta_time = unsafe { DELTA_TIME };
         *self.controls_mut().throttle_mut() =
-            (self.controls().throttle() + delta_time).clamp(1., 10.)
+            (self.controls().throttle() + delta_time).clamp(10., 1000.)
     }
 
     pub fn throttle_down(&mut self) {
         let delta_time = unsafe { DELTA_TIME };
         *self.controls_mut().throttle_mut() =
-            (self.controls().throttle() - delta_time).clamp(1., 10.)
+            (self.controls().throttle() - delta_time).clamp(10., 1000.)
     }
 }
 /// This implementation handles mutating the control parameters of the aircraft.
@@ -164,7 +166,7 @@ impl Steerable for Aircraft {
             .clamp(-MAX_ROLL_BIAS, MAX_ROLL_BIAS);
     }
     /// Mutate the throttle
-    fn forward(&mut self, amount: f32) {
-        *self.controls_mut().throttle_mut() += amount * STEERING_SENSITIVITY
+    fn forward(&mut self, amount: f32) {            // TEMPORARY
+        *self.controls_mut().throttle_mut() += amount * 500. * STEERING_SENSITIVITY
     }
 }

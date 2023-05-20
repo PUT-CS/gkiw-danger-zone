@@ -6,9 +6,12 @@ use crate::game::targeting_data::TargetingData;
 use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
+use itertools::{Itertools, MinMaxResult};
 use log::{info, warn};
+use num::integer::Roots;
 use rayon::ThreadPoolBuilder;
-use std::ops::Not;
+use std::collections::{HashMap, HashSet};
+use std::ops::{Div, Mul, Not};
 use std::sync::mpsc::{self, Receiver};
 extern crate glfw;
 use self::glfw::{Action, Key};
@@ -28,7 +31,9 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{vec3, Deg, EuclideanSpace, Matrix4, Point3, SquareMatrix, Vector3, Vector4};
+use cgmath::{
+    vec3, Deg, EuclideanSpace, Matrix4, MetricSpace, Point2, Point3, SquareMatrix, Vector3, Vector4
+};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -111,10 +116,7 @@ impl Game {
         });
 
         let mut terrain = Terrain::default();
-        terrain
-            .model
-            .set_scale(0.05)
-            .set_translation(vec3(0.0, -150., 0.0));
+        terrain.model.set_translation(vec3(0.0, -150., 0.0));
 
         let mut player = Player::default();
         audio.play(SoundEffect::CockpitAmbient, true);
@@ -163,6 +165,14 @@ impl Game {
 
     /// Compute new positions of all game objects based on input and state of the game
     pub fn update(&mut self) {
+        // terrain collisions
+        if self.player.camera().altitude() < self.terrain.height_at(&self.player.camera().xz_ints())
+        {
+            //log::error!("Collision");
+        } else {
+            //log::info!("OK")
+        }
+
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
