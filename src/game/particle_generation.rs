@@ -15,7 +15,7 @@ pub trait ParticleGeneration: Modeled {
 		    model.as_ref().unwrap().draw(&shader);
                 }
             });
-        gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+        gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA); 
     }
 
     fn particle_generator(&self) -> &ParticleGenerator;
