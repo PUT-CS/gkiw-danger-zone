@@ -28,15 +28,10 @@ fn main() {
         "src/shaders/light_vs.glsl",
         "src/shaders/light_fs.glsl",
     );
-
-    let hud_shader = Shader::new(
+    
+    let nolight_shader = Shader::new(
 	"src/shaders/no_light_vs.glsl",
 	"src/shaders/no_light_fs.glsl",
-    );
-
-    let particle_shader = Shader::new(
-	"src/shaders/particle_vs.glsl",
-	"src/shaders/particle_fs.glsl",
     );
 
     while !game.window.should_close() {
@@ -49,7 +44,7 @@ fn main() {
 
         unsafe {
             game.update();
-            game.draw(&shader, &hud_shader, &particle_shader);
+            game.draw(&shader, &nolight_shader);
         }
 
         game.window.swap_buffers();

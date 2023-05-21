@@ -32,7 +32,7 @@ use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
 use cgmath::{
-    vec3, Deg, EuclideanSpace, Matrix4, MetricSpace, Point2, Point3, SquareMatrix, Vector3, Vector4
+    vec3, Deg, EuclideanSpace, Matrix4, MetricSpace, Point2, Point3, SquareMatrix, Vector3, Vector4,
 };
 use lazy_static::lazy_static;
 use std::ffi::CStr;
@@ -246,43 +246,28 @@ impl Game {
         }
     }
 
-    pub unsafe fn draw(&mut self, shader: &Shader, hud_shader: &Shader, particle_shader: &Shader) {
+    pub unsafe fn draw(&mut self, shader: &Shader, nolight_shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        particle_shader.use_program();
-		self.setup_point_light(shader);
-        particle_shader.set_mat4(
-            c_str!("projection"),
-            &self.player.camera().projection_matrix(),
-        );
-        particle_shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
-        particle_shader.set_vector4(c_str!("ParticleColor"), &Vector4::new(1., 0., 1., 1.));
+        nolight_shader.use_program();
+        self.setup_camera(nolight_shader);
         self.enemies.map.values_mut().for_each(|e| {
-            e.aircraft_mut().draw_particles(particle_shader);
+            e.aircraft_mut().draw_particles(nolight_shader);
         });
 
         shader.use_program();
         //set light position and properties
         self.setup_directional_light(shader);
         //point light
-	self.setup_point_light(shader);
-        shader.set_mat4(
-            c_str!("projection"),
-            &self.player.camera().projection_matrix(),
-        );
-        shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
-
+        self.setup_point_light(shader);
+        self.setup_camera(shader);
         // Drawing game objects starts here
         self.terrain.draw(&shader);
         self.skybox.draw(&shader);
         self.enemies.map.values_mut().for_each(|e| {
             e.aircraft.draw(shader);
-
-            e.aircraft_mut().draw_particles(shader);
         });
         self.missiles.iter_mut().for_each(|m| {
             m.draw(shader);
-
-            m.draw_particles(shader);
         });
         self.player.aircraft().guns().draw(shader);
 
@@ -296,8 +281,10 @@ impl Game {
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
         self.player.cockpit.draw(&shader);
 
-        hud_shader.use_program();
-        self.hud.draw(hud_shader);
+	//Drawing hud
+        nolight_shader.use_program();
+	nolight_shader.set_vector4(c_str!("ParticleColor"), &Vector4::new(1., 1., 1., 1.));
+        self.hud.draw(nolight_shader);
     }
 
     pub fn process_events(&mut self, first_mouse: &mut bool, last_x: &mut f32, last_y: &mut f32) {
@@ -495,5 +482,13 @@ impl Game {
         shader.set_vector3(c_str!("pointLight.ambient"), &self.point_light.ambient);
         shader.set_vector3(c_str!("pointLight.diffuse"), &self.point_light.diffuse);
         shader.set_vector3(c_str!("pointLight.specular"), &self.point_light.specular);
+    }
+
+    pub unsafe fn setup_camera(&self, shader: &Shader) {
+        shader.set_mat4(
+            c_str!("projection"),
+            &self.player.camera().projection_matrix(),
+        );
+        shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
     }
 }
