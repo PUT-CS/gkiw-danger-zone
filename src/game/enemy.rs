@@ -1,8 +1,9 @@
-use std::ops::Sub;
+use std::ops::{BitAnd, Sub};
 
 use super::flight::aircraft::{self, Aircraft, AircraftKind};
 use super::flight::steerable::Steerable;
 use super::missile::EnemyID;
+use super::terrain::{self, Terrain};
 use crate::cg::consts::VEC_RIGHT;
 use crate::{gen_ref_getters, DELTA_TIME};
 use cgmath::{EuclideanSpace, InnerSpace, Point3, Quaternion, Vector3};
@@ -60,51 +61,61 @@ impl Enemy {
     pub fn id(&self) -> EnemyID {
         self.id
     }
-    pub fn fly(&mut self) {
+    pub fn fly(&mut self, terrain: &Terrain) {
         // Progress along the curve
-        if should_continue(self.aircraft().model().position_vek(), self.end_point) {
+
+        // The enemy has arrived at their destination and we should select a new one.
+        if at_destination(self.aircraft().model().position_vek(), self.end_point) {
+            log::error!("At destination");
             self.progress = 0.;
             self.start_point = self.aircraft().model().position_vek();
-            let random_mid = thread_rng().gen_range(30., 40.);
-            let random_length = thread_rng().gen_range(60., 80.);
+            let random_mid = thread_rng().gen_range(100., 200.);
+            let random_x = thread_rng().gen_range(terrain.bounds.x.start, terrain.bounds.x.end);
+            let random_z = thread_rng().gen_range(terrain.bounds.z.start, terrain.bounds.z.end);
+            let rand_height_offset = thread_rng().gen_range(40., 250.);
+            let rand_coord = Vec3::<f32>::from([
+                random_x as f32,
+                terrain.height_at(&(random_x, random_z).into()) + rand_height_offset,
+                random_z as f32,
+            ]);
             let mid = {
-                // Select a point in front of the launching aircraft to simulate the missile accelerating
+                // Select a point in front of the aircraft to simulate turning
                 let mid =
                     self.aircraft.model().position() + self.aircraft.model().front() * random_mid;
                 Vec3::from([mid.x, mid.y, mid.z])
             };
-            self.end_point = cgmath_to_vek(
-                &(self.aircraft.model().position() + self.aircraft.model().front() * random_length)
-                    .to_vec(),
-            ) + Vec3::new(random_mid, 0., random_mid);
+            self.end_point = rand_coord;
             let points = Vec3::from([self.start_point, mid, self.end_point]);
             self.bezier = QuadraticBezier3::from(points);
-        } else if should_return(self.aircraft().model().position_vek()) {
+            dbg!(self.bezier);
+        } else if !in_world_bounds(self.aircraft().model().position_vek(), terrain) {
             self.progress = 0.;
             self.start_point = self.aircraft().model().position_vek();
-            let random_mid = thread_rng().gen_range(30., 40.);
-            let random_x = thread_rng().gen_range(-40., 40.);
-            let random_y = thread_rng().gen_range(10., 20.);
-            let random_z = thread_rng().gen_range(-40., 40.);
+            let random_mid_distance = thread_rng().gen_range(30., 200.);
+            let new_x = thread_rng().gen_range(-40., 40.);
+            let new_y = thread_rng().gen_range(10., 20.);
+            let new_z = thread_rng().gen_range(-40., 40.);
 
             let mid = {
                 // Select a point in front of the launching aircraft to simulate the missile accelerating
-                let mid =
-                    self.aircraft.model().position() + self.aircraft.model().front() * random_mid;
+                let mid = self.aircraft.model().position()
+                    + self.aircraft.model().front() * random_mid_distance;
                 Vec3::from([mid.x, mid.y, mid.z])
             };
-            self.end_point = Vec3::new(random_x, random_y, random_z);
+            self.end_point = Vec3::new(new_x, new_y, new_z);
             let points = Vec3::from([self.start_point, mid, self.end_point]);
             self.bezier = QuadraticBezier3::from(points);
         };
+
         let t = {
             let bezier = self.bezier;
-            let t = 0.001;
+            let t = 0.0005;
             let v1 = (2. * bezier.start) - (4. * bezier.ctrl) + (2. * bezier.end);
             let v2 = (-2. * bezier.start) + (2. * bezier.ctrl);
             let l = unsafe { DELTA_TIME };
             t + (l / (t * v1 + v2).magnitude())
         };
+
         self.progress += t;
 
         let new_point = {
@@ -124,19 +135,13 @@ impl Enemy {
     }
 }
 
-fn should_return(position: Vec3<f32>) -> bool {
-    if position[0].abs() > 100. || position[1].abs() > 100. || position[2].abs() > 100. {
-        return true;
-    }
-    false
+fn in_world_bounds(pos: Vec3<f32>, terrain: &Terrain) -> bool {
+    terrain.bounds.x.contains(&(pos.x as i32)) && terrain.bounds.z.contains(&(pos.z as i32))
 }
 
-fn should_continue(start: Vec3<f32>, end: Vec3<f32>) -> bool {
+fn at_destination(start: Vec3<f32>, end: Vec3<f32>) -> bool {
     let difference = end - start;
-    if difference[0].abs() < 0.2 && difference[1].abs() < 0.2 && difference[2].abs() < 0.2 {
-        return true;
-    }
-    false
+    difference[0].abs() < 0.2 && difference[1].abs() < 0.2 && difference[2].abs() < 0.2
 }
 
 fn vek_to_cgmath(v: &Vec3<f32>) -> Vector3<f32> {

@@ -4,6 +4,7 @@ use cgmath::Point2;
 use itertools::{Itertools, MinMaxResult};
 use lazy_static::{lazy_static, __Deref};
 use log::{info, warn};
+use std::ops::Range;
 use std::collections::HashMap;
 
 lazy_static! {
@@ -18,9 +19,15 @@ pub enum TerrainType {
     Desert,
 }
 
+pub struct Bounds {
+    pub x: Range<i32>,
+    pub z: Range<i32>
+}
+
 pub struct Terrain {
     pub model: Model,
     pub heights: HashMap<Point2<i32>, f32>,
+    pub bounds: Bounds
 }
 
 impl Terrain {
@@ -28,9 +35,11 @@ impl Terrain {
         info!("Creating new Terrain with template: {path}",);
         let model =  Model::new(TERRAINS.get(&type_).expect("Path for terrain kind exists"));
         let heights = Terrain::heights_of(&model);
+        let bounds = model.bounds();
         Terrain {
             model,
-            heights
+            heights,
+            bounds
         }
     }
     fn heights_of(terrain_model: &Model) -> HashMap<Point2<i32>, f32> {

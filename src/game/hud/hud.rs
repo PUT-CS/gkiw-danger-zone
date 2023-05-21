@@ -6,18 +6,19 @@ use crate::{
         enemies::Enemies,
         flight::steerable::Steerable,
         missile::EnemyID,
-        targeting_data::{self, TargetingData}, terrain::Terrain,
+        targeting_data::{self, TargetingData},
+        terrain::Terrain,
     },
     GLFW_TIME,
 };
-use cgmath::{vec3, Deg, InnerSpace, Matrix4, MetricSpace, SquareMatrix, Vector3, EuclideanSpace};
+use cgmath::{vec3, Deg, EuclideanSpace, InnerSpace, Matrix4, MetricSpace, SquareMatrix, Vector3};
 use lazy_static::{__Deref, lazy_static};
 use log::warn;
-use vek::{QuadraticBezier2, QuadraticBezier3, Vec3};
 use std::{
     ffi::CStr,
     ops::{Div, Mul},
 };
+use vek::{QuadraticBezier2, QuadraticBezier3, Vec3};
 
 lazy_static! {
     static ref TARGET_RECTANGLE: Model = {
@@ -72,6 +73,9 @@ impl Hud {
             .resize_with(enemies.map.len(), || TARGET_RECTANGLE.clone());
         self.lock_rectangle.set_scale(0.);
         self.target_circle.set_scale(0.);
+        self.target_rectangles.iter_mut().for_each(|r| {
+            r.set_scale(0.);
+        });
 
         for (rect, enemy) in self.target_rectangles.iter_mut().zip(enemies.map.values()) {
             let vec_to_enemy = (enemy.position() - camera.position()).normalize();
@@ -79,7 +83,7 @@ impl Hud {
             if vec_to_enemy.angle(camera.front) > Deg(100.).into() {
                 continue;
             }
-            
+
             let element_pos = {
                 let clip_space = camera.projection_matrix()
                     * camera.view_matrix()

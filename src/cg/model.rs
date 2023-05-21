@@ -1,7 +1,6 @@
 use super::consts::VEC_FRONT;
 use super::consts::VEC_RIGHT;
 use super::consts::VEC_UP;
-use super::particles::ParticleGenerator;
 use super::texture::Texture;
 use super::transformation::Transformation;
 use super::vertex::Vertex;
@@ -9,8 +8,8 @@ use crate::c_str;
 use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::flight::steerable::Steerable;
+use crate::game::terrain::Bounds;
 use crate::offset_of;
-use cgmath::Vector4;
 use cgmath::prelude::*;
 use cgmath::Deg;
 use cgmath::Quaternion;
@@ -19,10 +18,11 @@ use gl;
 use image;
 use image::DynamicImage::*;
 use image::GenericImage;
+use itertools::Itertools;
+use itertools::MinMaxResult;
 use log::error;
-use log::warn;
 use std::ffi::CStr;
-use std::ffi::{CString, OsStr};
+use std::ffi::CString;
 use std::mem::size_of;
 use std::os::raw::c_void;
 use std::path::Path;
@@ -62,15 +62,10 @@ impl Default for Model {
             transformation: Transformation::default(),
             orientation: Quaternion::from_angle_x(Deg(0.)),
             directory: String::new(),
-	    shininess: 0.6,
+            shininess: 0.6,
         }
     }
 }
-
-//self.transformation.yaw += amount;
-// self.right = (rotation * self.right).normalize();
-// self.front = (rotation * self.front).normalize();
-//self.model_matrix = self.model_matrix * Matrix4::from(rotation);
 
 impl Steerable for Model {
     fn pitch(&mut self, amount: f32) {
@@ -101,12 +96,15 @@ impl Drawable for Model {
             );
             panic!("Attempt to draw a model that was not loaded");
         }
-	
+
         let matrix = self.build_model_matrix();
         shader.set_mat4(c_str!("model"), &matrix);
-        shader.set_mat4(c_str!("inverseModel"), &matrix.invert().unwrap_or_else(|| matrix));
-	// set material properties
-	shader.set_float(c_str!("material.shininess"), self.shininess);
+        shader.set_mat4(
+            c_str!("inverseModel"),
+            &matrix.invert().unwrap_or_else(|| matrix),
+        );
+        // set material properties
+        shader.set_float(c_str!("material.shininess"), self.shininess);
         // bind appropriate textures
         let mut diffuse_nr = 0;
         let mut specular_nr = 0;
@@ -180,7 +178,7 @@ impl Model {
         // unexpected results like the model rotating around world origin
         // instead of its own local axis
         //s * t * r
-	t * s * r
+        t * s * r
     }
 
     /// Get the model's position in world coordinates
@@ -194,11 +192,11 @@ impl Model {
         let m = self.build_model_matrix();
         Vec3::from([m.w.x, m.w.y, m.w.z])
     }
-    
+
     pub fn front(&self) -> Vector3 {
         self.orientation.rotate_vector(*VEC_FRONT).normalize()
     }
-    
+
     pub fn front_vek(&self) -> Vec3<f32> {
         let f = self.front();
         Vec3::from([f.x, f.y, f.z])
@@ -207,12 +205,12 @@ impl Model {
     pub fn up(&self) -> Vector3 {
         self.orientation.rotate_vector(*VEC_UP).normalize()
     }
-    
+
     pub fn up_vek(&self) -> Vec3<f32> {
         let u = self.up();
         Vec3::from([u.x, u.y, u.z])
     }
-    
+
     /// Scale the model based on its current scale.
     /// For example: scaling by 0.5 and then by 2.0 restores original size
     pub fn scale(&mut self, scale: f32) -> &mut Self {
@@ -246,14 +244,20 @@ impl Model {
         self.orientation = quaternion;
     }
 
-    // pub fn model_matrix(&self) -> Matrix4 {
-    //     self.model_matrix
-    // }
-
-    // /// Use this cautiously!
-    // pub fn set_model_matrix(&mut self, m: Matrix4) {
-    //     self.model_matrix = m
-    // }
+    pub fn bounds(&self) -> Bounds {
+        let positions = self.vertices.iter().map(|v| v.position);
+        let x = positions.clone().minmax_by_key(|p| p.x);
+        let z = positions.clone().minmax_by_key(|p| p.z);
+        let b = match (x, z) {
+            (MinMaxResult::MinMax(min_x, max_x), MinMaxResult::MinMax(min_z, max_z)) => (
+                min_x.x as i32..max_x.x as i32,
+                min_z.z as i32..max_z.z as i32,
+            ),
+            _ => unreachable!(),
+        };
+        dbg!(&b.0, &b.1);
+        Bounds { x: b.0, z: b.1 }
+    }
 
     /// Load a model from file and store the resulting meshes in the meshes vector.
     pub fn load_model(&mut self, path: &str) {
@@ -270,7 +274,7 @@ impl Model {
             .to_str()
             .unwrap()
             .into();
-        
+
         let obj = tobj::load_obj(path);
         let (models, materials) = obj.unwrap();
 

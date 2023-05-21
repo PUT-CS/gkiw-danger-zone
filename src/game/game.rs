@@ -32,7 +32,8 @@ use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
 use cgmath::{
-    vec3, Deg, EuclideanSpace, Matrix4, MetricSpace, Point2, Point3, SquareMatrix, Vector3, Vector4
+    vec3, Deg, EuclideanSpace, Matrix4, MetricSpace, Point2, Point3, SquareMatrix, Vector3,
+    Vector4, Zero,
 };
 use lazy_static::lazy_static;
 use std::ffi::CStr;
@@ -168,25 +169,15 @@ impl Game {
         // terrain collisions
         if self.player.camera().altitude() < self.terrain.height_at(&self.player.camera().xz_ints())
         {
-            //log::error!("Collision");
-        } else {
-            //log::info!("OK")
+            log::error!("Collision!");
+            std::process::exit(1);
         }
 
         self.player.apply_controls();
         self.player.aircraft_mut().apply_decay();
         self.respawn_enemies();
         self.enemies.map.values_mut().for_each(|e| {
-            let position = e.aircraft().model().position();
-            let front = e.aircraft().model().front();
-            e.aircraft_mut()
-                .particle_generator_mut()
-                .update_particles(position, 1, front);
-            let delta = unsafe { DELTA_TIME };
-            e.fly();
-            // e.aircraft_mut().model_mut().forward(50. * delta);
-            // e.aircraft_mut().model_mut().pitch(50. * delta);
-            // e.aircraft_mut().model_mut().roll(50. * delta);
+            e.fly(&self.terrain);
         });
         let shot_down = self.update_missiles();
         self.enemies.map.retain(|id, _| !shot_down.contains(id));
@@ -249,7 +240,7 @@ impl Game {
     pub unsafe fn draw(&mut self, shader: &Shader, hud_shader: &Shader, particle_shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         particle_shader.use_program();
-		self.setup_point_light(shader);
+        self.setup_point_light(shader);
         particle_shader.set_mat4(
             c_str!("projection"),
             &self.player.camera().projection_matrix(),
@@ -264,7 +255,7 @@ impl Game {
         //set light position and properties
         self.setup_directional_light(shader);
         //point light
-	self.setup_point_light(shader);
+        self.setup_point_light(shader);
         shader.set_mat4(
             c_str!("projection"),
             &self.player.camera().projection_matrix(),
