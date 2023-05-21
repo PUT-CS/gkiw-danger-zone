@@ -29,7 +29,7 @@ fn main() {
         "src/shaders/light_fs.glsl",
     );
     
-    let nolight_shader = Shader::new(
+    let no_light_shader = Shader::new(
 	"src/shaders/no_light_vs.glsl",
 	"src/shaders/no_light_fs.glsl",
     );
@@ -44,7 +44,7 @@ fn main() {
 
         unsafe {
             game.update();
-            game.draw(&shader, &nolight_shader);
+            game.draw(&shader, &no_light_shader);
         }
 
         game.window.swap_buffers();

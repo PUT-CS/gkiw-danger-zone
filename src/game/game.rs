@@ -237,14 +237,13 @@ impl Game {
         }
     }
 
-    pub unsafe fn draw(&mut self, shader: &Shader, nolight_shader: &Shader) {
+    pub unsafe fn draw(&mut self, shader: &Shader, no_light_shader: &Shader) {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        nolight_shader.use_program();
-        self.setup_camera(nolight_shader);
-        self.enemies.map.values_mut().for_each(|e| {
-            e.aircraft_mut().draw_particles(nolight_shader);
+        no_light_shader.use_program();
+        self.setup_camera(no_light_shader);
+	self.missiles.iter_mut().for_each(|m| {
+            m.draw_particles(no_light_shader);
         });
-
         shader.use_program();
         //set light position and properties
         self.setup_directional_light(shader);
@@ -275,9 +274,9 @@ impl Game {
         self.player.cockpit.draw(&shader);
 
 	//Drawing hud
-        nolight_shader.use_program();
-	nolight_shader.set_vector4(c_str!("ParticleColor"), &Vector4::new(1., 1., 1., 1.));
-        self.hud.draw(nolight_shader);
+        no_light_shader.use_program();
+	no_light_shader.set_vector4(c_str!("ParticleColor"), &Vector4::new(1., 1., 1., 1.));
+        self.hud.draw(no_light_shader);
     }
 
     pub fn process_events(&mut self, first_mouse: &mut bool, last_x: &mut f32, last_y: &mut f32) {
