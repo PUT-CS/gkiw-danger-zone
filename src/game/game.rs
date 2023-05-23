@@ -248,6 +248,14 @@ impl Game {
         //set light position and properties
         self.setup_directional_light(shader);
         //point light
+	
+	if self.targeting_data.is_some() {
+	    self.point_light.diffuse.x = 0.;
+	    self.point_light.diffuse.y = 1.;
+	} else {
+	    self.point_light.diffuse.x = 1.;
+	    self.point_light.diffuse.y = 0.;
+	}
         self.setup_point_light(shader);
 
         self.setup_camera(shader);

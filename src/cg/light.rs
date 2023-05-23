@@ -40,7 +40,7 @@ impl PointLight {
             linear: 0.7,
             quadratic: 1.8,
             ambient: Vector3::new(0.2, 0.2, 0.2),
-            diffuse: Vector3::new(0., 1.0, 0.),
+            diffuse: Vector3::new(1., 0., 0.),
             specular: Vector3::new(0.5, 0.5, 0.5),
         }
     }
