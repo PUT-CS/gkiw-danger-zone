@@ -66,7 +66,6 @@ impl Enemy {
 
         // The enemy has arrived at their destination and we should select a new one.
         if at_destination(self.aircraft().model().position_vek(), self.end_point) {
-            log::error!("At destination");
             self.progress = 0.;
             self.start_point = self.aircraft().model().position_vek();
             let random_mid = thread_rng().gen_range(100., 200.);
@@ -87,7 +86,6 @@ impl Enemy {
             self.end_point = rand_coord;
             let points = Vec3::from([self.start_point, mid, self.end_point]);
             self.bezier = QuadraticBezier3::from(points);
-            dbg!(self.bezier);
         } else if !in_world_bounds(self.aircraft().model().position_vek(), terrain) {
             self.progress = 0.;
             self.start_point = self.aircraft().model().position_vek();
