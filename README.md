@@ -7,7 +7,6 @@ Air-to-air combat game powered by OpenGL.
 - Enemy variety
 - Two weapons: homing missiles and guns
 - Particles
-- Voice acting inspired by the Ace Combat series
 
 ## Authors
 Michał Miłek & Sebastian Nowak
