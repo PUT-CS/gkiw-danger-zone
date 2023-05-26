@@ -8,13 +8,14 @@ use crate::{
     c_str,
     cg::shader::Shader,
     game::{drawable::Drawable, flight::steerable::Steerable, terrain::Bounds},
-    offset_of,
+    //offset_of,
 };
 use cgmath::{prelude::*, vec2, vec3, Deg, Quaternion};
 use gl;
 use image::{DynamicImage::*, GenericImage};
 use itertools::{Itertools, MinMaxResult};
 use log::error;
+use memoffset::offset_of;
 use std::{
     ffi::{CStr, CString},
     mem::size_of,
@@ -94,10 +95,7 @@ impl Drawable for Model {
 
         let matrix = self.build_model_matrix();
         shader.set_mat4(c_str!("model"), &matrix);
-        shader.set_mat4(
-            c_str!("inverseModel"),
-            &matrix.invert().unwrap_or_else(|| matrix),
-        );
+        shader.set_mat4(c_str!("inverseModel"), &matrix.invert().unwrap_or(matrix));
         // set material properties
         shader.set_float(c_str!("material.shininess"), self.shininess);
 
@@ -108,10 +106,7 @@ impl Drawable for Model {
 
         // select the texture
         let sampler = CString::new(format!("{}{}", name, number)).unwrap();
-        gl::Uniform1i(
-            gl::GetUniformLocation(shader.id, sampler.as_ptr()),
-            0 as i32,
-        );
+        gl::Uniform1i(gl::GetUniformLocation(shader.id, sampler.as_ptr()), 0_i32);
         // bind the texture
         gl::BindTexture(gl::TEXTURE_2D, texture.id);
 
@@ -165,20 +160,6 @@ impl Model {
         self.orientation.rotate_vector(*VEC_FRONT).normalize()
     }
 
-    pub fn front_vek(&self) -> Vec3<f32> {
-        let f = self.front();
-        Vec3::from([f.x, f.y, f.z])
-    }
-
-    pub fn up(&self) -> Vector3 {
-        self.orientation.rotate_vector(*VEC_UP).normalize()
-    }
-
-    pub fn up_vek(&self) -> Vec3<f32> {
-        let u = self.up();
-        Vec3::from([u.x, u.y, u.z])
-    }
-
     /// Scale the model based on its current scale.
     /// For example: scaling by 0.5 and then by 2.0 restores original size
     pub fn scale(&mut self, scale: f32) -> &mut Self {
@@ -223,7 +204,6 @@ impl Model {
             ),
             _ => unreachable!(),
         };
-        dbg!(&b.0, &b.1);
         Bounds { x: b.0, z: b.1 }
     }
 
@@ -362,7 +342,7 @@ unsafe fn texture_from_file(path: &str, directory: &str) -> u32 {
     let filename = format!("{}/{}", directory, path);
     let mut texture_id = 0;
     gl::GenTextures(1, &mut texture_id);
-    let img = image::open(&Path::new(&filename)).expect("Texture failed to load");
+    let img = image::open(Path::new(&filename)).expect("Texture failed to load");
     let img = img.flipv();
     let format = match img {
         ImageLuma8(_) => gl::RED,

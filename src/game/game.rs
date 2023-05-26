@@ -6,12 +6,9 @@ use crate::game::targeting_data::TargetingData;
 use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
 use glfw::ffi::glfwSwapInterval;
 use glfw::{Context, Glfw, Window, WindowEvent};
-use itertools::{Itertools, MinMaxResult};
 use log::{info, warn};
-use num::integer::Roots;
 use rayon::ThreadPoolBuilder;
-use std::collections::{HashMap, HashSet};
-use std::ops::{Div, Mul, Not};
+use std::ops::Not;
 use std::sync::mpsc::{self, Receiver};
 extern crate glfw;
 use self::glfw::{Action, Key};
@@ -31,10 +28,7 @@ use crate::cg::shader::Shader;
 use crate::game::drawable::Drawable;
 use crate::game::id_gen::IDGenerator;
 use crate::key_pressed;
-use cgmath::{
-    vec3, Deg, EuclideanSpace, Matrix4, MetricSpace, Point2, Point3, SquareMatrix, Vector3,
-    Vector4, Zero,
-};
+use cgmath::{vec3, Deg, EuclideanSpace, Matrix4, Point3, SquareMatrix, Vector3, Vector4};
 use lazy_static::lazy_static;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -201,7 +195,7 @@ impl Game {
         }
         self.update_targeting();
         self.hud
-            .update(&self.player.camera(), &self.enemies, &self.targeting_data);
+            .update(self.player.camera(), &self.enemies, &self.targeting_data);
     }
 
     /// Make the Enemies struct check for missing enemies and respawn them
@@ -225,7 +219,7 @@ impl Game {
             if self
                 .player
                 .targetable_enemies(&self.enemies)
-                .unwrap_or_else(|| vec![])
+                .unwrap_or(vec![])
                 .contains(&data.target_id)
                 .not()
             {
@@ -267,8 +261,8 @@ impl Game {
         self.setup_camera(shader);
 
         // Drawing game objects starts here
-        self.terrain.draw(&shader);
-        self.skybox.draw(&shader);
+        self.terrain.draw(shader);
+        self.skybox.draw(shader);
         self.enemies.map.values_mut().for_each(|e| {
             e.aircraft.draw(shader);
         });
@@ -285,7 +279,7 @@ impl Game {
             time.cos() * 0.003,
         ));
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
-        self.player.cockpit.draw(&shader);
+        self.player.cockpit.draw(shader);
 
         //Drawing hud
         no_light_shader.use_program();
@@ -382,11 +376,9 @@ impl Game {
             }
             self.fire_guns();
         });
-        if self.window.get_key(Key::M) == Action::Release {
-            if self.player.aircraft().guns().firing {
-                self.audio.stop(self.player.guns_sound);
-                self.player.aircraft_mut().guns_mut().stop_firing();
-            }
+        if self.window.get_key(Key::M) == Action::Release && self.player.aircraft().guns().firing {
+            self.audio.stop(self.player.guns_sound);
+            self.player.aircraft_mut().guns_mut().stop_firing();
         }
         key_pressed!(self.window, Key::Space, self.launch_missile());
         key_pressed!(self.window, Key::K, self.switch_target());
@@ -444,7 +436,7 @@ impl Game {
             let enemy = missile
                 .target()
                 .and_then(|id| self.enemies.get_mut_by_id(id))
-                .or_else(|| None);
+                .or(None);
             if let Some(MissileMessage::HitEnemy(id)) = missile.update(enemy.as_deref()) {
                 shot_down.push(id);
                 self.targeting_data = None;
@@ -494,7 +486,7 @@ impl Game {
     pub unsafe fn setup_camera(&self, shader: &Shader) {
         shader.set_mat4(
             c_str!("projection"),
-            &self.player.camera().projection_matrix(),
+            self.player.camera().projection_matrix(),
         );
         shader.set_mat4(c_str!("view"), &self.player.camera().view_matrix());
     }

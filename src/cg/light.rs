@@ -25,7 +25,7 @@ impl DirectionalLight {
     pub fn new(direction: Vector3<f32>) -> Self {
         Self {
             direction,
-            ambient: Vector3::new(0.6,0.6, 0.6),
+            ambient: Vector3::new(0.6, 0.6, 0.6),
             diffuse: Vector3::new(0.4, 0.4, 0.4),
             specular: Vector3::new(0.5, 0.5, 0.5),
         }

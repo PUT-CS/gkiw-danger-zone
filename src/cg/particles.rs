@@ -56,22 +56,14 @@ impl ParticleGenerator {
         model.set_scale(0.1);
         let mut particles = Vec::with_capacity(size);
         particles.resize_with(size, || Particle::new(color));
-        let generator = Self {
+        Self {
             particles,
             color,
             offset,
             last_revived_particle_idx: 0,
             enabled: true,
             model,
-        };
-        generator
-    }
-
-    pub fn enable(&mut self) {
-        self.enabled = true;
-    }
-    pub fn disable(&mut self) {
-        self.enabled = false;
+        }
     }
 
     pub fn first_dead_particle(&self) -> usize {

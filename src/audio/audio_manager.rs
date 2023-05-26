@@ -4,10 +4,9 @@ use super::{
 };
 use ambisonic::rodio::{OutputStream, Sink, Source};
 use lazy_static::lazy_static;
-use log::{error, info, warn};
+use log::{error, info};
 use std::{
     collections::HashMap,
-    iter::repeat,
     sync::mpsc::TryRecvError,
     sync::mpsc::{self, Receiver, Sender},
 };
@@ -20,7 +19,7 @@ pub enum SoundEffect {
     Guns,
     Seeking,
     Locking,
-    Locked
+    Locked,
 }
 
 lazy_static! {
@@ -99,14 +98,9 @@ impl AudioManager {
                 }
             };
             match message {
-                InternalMessage::Play(..) => {
-                    error!("Sent a play request to an already playing thread")
-                }
-                InternalMessage::MoveSoundTo(_pos) => todo!("Move sound"),
-                InternalMessage::Resume => todo!("Resume"),
                 InternalMessage::Stop => {
                     sink.stop();
-                },
+                }
                 InternalMessage::Exit => {
                     info!("Killing player thread!");
                     break;
@@ -154,14 +148,13 @@ impl AudioManager {
                 // Sender that enables the thread to signal that its work has finished and it should get cleaned up
                 let eow_sender = self.eow.0.clone();
                 // Save the sound info to a hashmap, allowing later communication
-                self.active_sounds.insert(id, sender.clone());
+                self.active_sounds.insert(id, sender);
                 rayon::spawn(move || {
                     let sound = Sound::new(path);
                     AudioManager::player_thread(id, receiver, sound, eow_sender, repeat)
                 });
                 false
             }
-            AudioMessage::Resume(id) => todo!(),
             AudioMessage::Stop(id) => {
                 self.active_sounds
                     .get(&id)
@@ -171,11 +164,6 @@ impl AudioManager {
                 info!("Stopping ID {id}");
                 false
             }
-            AudioMessage::MoveSoundTo(id, position) => todo!(),
-            AudioMessage::Pause(id) => {
-                info!("Pausing ID {id}");
-                todo!()
-            }
             AudioMessage::Exit => {
                 info!("Starting audio cleanup");
                 self.active_sounds.values().for_each(|s| {
@@ -184,15 +172,5 @@ impl AudioManager {
                 true
             }
         }
-    }
-
-    pub fn play() {
-        todo!()
-    }
-    pub fn stop() {
-        todo!()
-    }
-    pub fn resume() {
-        todo!()
     }
 }

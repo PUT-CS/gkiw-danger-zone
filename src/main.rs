@@ -6,11 +6,11 @@ use crate::game::game::Game;
 const SCR_WIDTH: u32 = 1000;
 const SCR_HEIGHT: u32 = 1000;
 
+mod audio;
 mod cg;
 mod game;
 mod macros;
 mod tests;
-mod audio;
 
 static mut DELTA_TIME: f32 = 0.;
 static mut GLFW_TIME: f64 = 0.;
@@ -24,18 +24,15 @@ fn main() {
 
     let mut game = Game::new();
 
-    let shader = Shader::new(
-        "src/shaders/light_vs.glsl",
-        "src/shaders/light_fs.glsl",
-    );
-    
+    let shader = Shader::new("src/shaders/light_vs.glsl", "src/shaders/light_fs.glsl");
+
     let no_light_shader = Shader::new(
-	"src/shaders/no_light_vs.glsl",
-	"src/shaders/no_light_fs.glsl",
+        "src/shaders/no_light_vs.glsl",
+        "src/shaders/no_light_fs.glsl",
     );
 
     while !game.window.should_close() {
-        unsafe {GLFW_TIME = game.glfw.get_time()}
+        unsafe { GLFW_TIME = game.glfw.get_time() }
         let current_frame = game.glfw.get_time() as f32;
         update_delta_time(current_frame, last_frame);
         last_frame = current_frame;

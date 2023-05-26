@@ -22,9 +22,6 @@ impl Audio {
             .expect("Send message to audio thread");
         id
     }
-    pub fn pause(&self, id: SoundID) {
-        self.sender.send(AudioMessage::Pause(id)).unwrap()
-    }
     pub fn stop(&self, id: SoundID) {
         self.sender.send(AudioMessage::Stop(id)).unwrap()
     }

@@ -1,21 +1,18 @@
-use std::ops::{BitAnd, Sub};
-
-use super::flight::aircraft::{self, Aircraft, AircraftKind};
+use super::flight::aircraft::{Aircraft, AircraftKind};
 use super::flight::steerable::Steerable;
 use super::missile::EnemyID;
-use super::terrain::{self, Terrain};
+use super::terrain::Terrain;
 use crate::cg::consts::VEC_RIGHT;
 use crate::{gen_ref_getters, DELTA_TIME};
 use cgmath::{EuclideanSpace, InnerSpace, Point3, Quaternion, Vector3};
-use image::pnm::ArbitraryHeader;
 use rand::{thread_rng, Rng};
+use std::ops::Sub;
 use vek::{QuadraticBezier3, Vec3};
 
 /// Struct representing an enemy
 pub struct Enemy {
     id: u32,
     pub aircraft: Aircraft,
-    destroyed: bool,
     start_point: Vec3<f32>,
     end_point: Vec3<f32>,
     bezier: QuadraticBezier3<f32>,
@@ -42,15 +39,11 @@ impl Enemy {
         Self {
             id,
             aircraft,
-            destroyed: false,
             start_point,
             end_point,
             bezier: QuadraticBezier3::from(points),
             progress: 0.,
         }
-    }
-    pub fn destroy(&mut self) {
-        self.destroyed = true
     }
     pub fn aircraft_mut(&mut self) -> &mut Aircraft {
         &mut self.aircraft

@@ -1,5 +1,5 @@
-use vek::QuadraticBezier3;
 use super::missile::EnemyID;
+use vek::QuadraticBezier3;
 
 /// Number of frames after which a missile without a target gets deleted
 const TERMINATION_TIME: u32 = 5000;
@@ -8,7 +8,7 @@ const TERMINATION_TIME: u32 = 5000;
 pub struct GuidanceData {
     pub target_id: EnemyID,
     pub bezier: QuadraticBezier3<f32>,
-    pub progress: f32
+    pub progress: f32,
 }
 
 type TerminationTimer = u32;
@@ -17,7 +17,7 @@ pub enum GuidanceStatus {
     /// Contains an integer representing the number of ticks left until termination.
     None(TerminationTimer),
     /// Contains data necessary for guidance
-    Active(GuidanceData)
+    Active(GuidanceData),
 }
 
 impl GuidanceStatus {
@@ -25,12 +25,10 @@ impl GuidanceStatus {
         GuidanceStatus::None(TERMINATION_TIME)
     }
     pub fn new(target_id: EnemyID, bezier: QuadraticBezier3<f32>) -> Self {
-        Self::Active(
-            GuidanceData {
-                target_id,
-                bezier,
-                progress: 0.
-            }
-        )
+        Self::Active(GuidanceData {
+            target_id,
+            bezier,
+            progress: 0.,
+        })
     }
 }

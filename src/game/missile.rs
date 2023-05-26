@@ -2,22 +2,19 @@ use super::drawable::Drawable;
 use super::enemy::Enemy;
 use super::missile_guidance::GuidanceStatus;
 use super::modeled::Modeled;
-use crate::cg::consts::{VEC_UP, VEC_RIGHT};
+use crate::cg::consts::VEC_RIGHT;
 use crate::cg::particles::ParticleGenerator;
 use crate::game::flight::steerable::Steerable;
 use crate::game::particle_generation::ParticleGeneration;
 use crate::DELTA_TIME;
 use crate::{cg::camera::Camera, cg::model::Model};
-use cgmath::{EuclideanSpace, Matrix3, MetricSpace, Point3, Quaternion, SquareMatrix, Vector3, Vector4, Matrix4, Rotation, InnerSpace};
-use log::warn;
+use cgmath::{EuclideanSpace, InnerSpace, MetricSpace, Point3, Quaternion, Vector3, Vector4};
+use log::info;
 use vek::{QuadraticBezier3, Vec3};
 
 pub type EnemyID = u32;
 
 pub enum MissileMessage {
-    LostLock,
-    Terminated,
-    None,
     HitEnemy(EnemyID),
     BeganTermination,
 }
@@ -37,7 +34,7 @@ impl Missile {
     pub fn new(camera: &Camera, target: Option<&Enemy>) -> Self {
         let mut model = Model::new("resources/objects/missile/missile.obj");
         let particle_generator = ParticleGenerator::new(1500, Vector4::new(1., 0., 0., 1.), 2.);
-        
+
         model.apply_quaternion(camera.orientation_quat());
 
         let pos = camera.position().to_vec() + camera.up * -0.5;
@@ -58,26 +55,30 @@ impl Missile {
         } else {
             GuidanceStatus::none()
         };
-        
-        Self { model, guidance, particle_generator }
+
+        Self {
+            model,
+            guidance,
+            particle_generator,
+        }
     }
 
     /// Report on what the missile is doing this frame
     /// based on the information from the Enemy reference
     pub fn update(&mut self, enemy: Option<&Enemy>) -> Option<MissileMessage> {
-        return match (enemy, self.guidance) {
+        match (enemy, self.guidance) {
             (Some(e), GuidanceStatus::Active(_)) => {
                 self.try_hit_target(e).or_else(|| self.guide_towards(e))
             }
             (None, GuidanceStatus::Active(_)) => self.begin_terminate(),
             (_, GuidanceStatus::None(timer)) => self.termination_countdown(timer),
-        };
+        }
     }
 
     /// See if the missile should hit, return A message containing the enemy ID if it did.
     fn try_hit_target(&mut self, target: &Enemy) -> Option<MissileMessage> {
         if self.position().distance(target.position()) < 2. {
-            warn!("MISSILE HIT");
+            info!("MISSILE HIT");
             self.guidance = GuidanceStatus::none();
             return Some(MissileMessage::HitEnemy(target.id()));
         }
@@ -128,7 +129,7 @@ impl Missile {
 
     /// Decrement the termination countdown
     fn termination_countdown(&mut self, timer: u32) -> Option<MissileMessage> {
-        self.model.forward(100. * unsafe {DELTA_TIME});
+        self.model.forward(100. * unsafe { DELTA_TIME });
         self.guidance = GuidanceStatus::None(timer - 1);
         None
     }

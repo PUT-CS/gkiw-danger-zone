@@ -12,10 +12,10 @@ pub trait ParticleGeneration: Modeled {
             .for_each(|p| {
                 if p.life > 0. {
                     model.as_mut().unwrap().set_translation(p.position.to_vec());
-		    model.as_ref().unwrap().draw(&shader);
+                    model.as_ref().unwrap().draw(shader);
                 }
             });
-        gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA); 
+        gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
     }
 
     fn particle_generator(&self) -> &ParticleGenerator;

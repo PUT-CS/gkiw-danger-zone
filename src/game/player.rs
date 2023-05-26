@@ -7,14 +7,13 @@ use crate::gen_ref_getters;
 use crate::{
     cg::{
         camera::{Camera, ControlSurfaces, Movement, Movement::*},
-        consts::VEC_FRONT,
         model::Model,
     },
     DELTA_TIME,
 };
-use cgmath::{vec3, InnerSpace, Rotation};
+use cgmath::InnerSpace;
 use itertools::Itertools;
-use log::{error, warn};
+use log::warn;
 
 #[derive(Debug)]
 pub struct Player {
@@ -42,14 +41,6 @@ impl Default for Player {
 }
 
 impl Player {
-    pub fn new(aircraft_kind: AircraftKind) -> Self {
-        Player {
-            aircraft: Aircraft::new(aircraft_kind),
-            camera: Camera::default(),
-            cockpit: Model::new("resources/objects/cockpit/cockpit.obj"),
-            guns_sound: SoundID::MAX,
-        }
-    }
     pub fn aircraft_mut(&mut self) -> &mut Aircraft {
         &mut self.aircraft
     }
@@ -116,11 +107,11 @@ impl Player {
             .sorted_by(|t1, t2| t1.1 .0.partial_cmp(&t2.1 .0).unwrap())
             .map(|(id, _)| *id)
             .collect_vec();
-        return if targeted.is_empty() {
+        if targeted.is_empty() {
             None
         } else {
             Some(targeted)
-        };
+        }
     }
 
     /// Handle key events meant for player controls.

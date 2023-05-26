@@ -3,15 +3,14 @@ use crate::gen_ref_getters;
 use crate::SCR_HEIGHT;
 use crate::SCR_WIDTH;
 use cgmath;
-use cgmath::Point2;
 use cgmath::perspective;
 use cgmath::prelude::*;
 use cgmath::vec3;
 use cgmath::Deg;
 use cgmath::Matrix3;
+use cgmath::Point2;
 use cgmath::Quaternion;
 use num::ToPrimitive;
-use vek::Vec3;
 
 type Point3 = cgmath::Point3<f32>;
 type Vector3 = cgmath::Vector3<f32>;
@@ -131,10 +130,5 @@ impl Camera {
     pub fn xz_ints(&self) -> Point2<i32> {
         let p = self.position().map(|s| s.to_i32().unwrap());
         (p.x, p.z).into()
-    }
-
-    pub fn position_vek(&self) -> Vec3<f32> {
-        let p = &self.position;
-        Vec3::from([p.x, p.y, p.z])
     }
 }

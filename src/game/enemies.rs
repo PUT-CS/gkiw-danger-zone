@@ -43,11 +43,6 @@ impl Enemies {
         )
     }
 
-    pub fn update(&mut self) {
-        self.map.iter_mut().for_each(|e| e.1.aircraft_mut().model_mut().forward(0.01));
-        self.map.iter_mut().for_each(|e| e.1.aircraft_mut().model_mut().pitch(0.02));
-    }
-
     pub fn respawn_enemies(&mut self) {
         if let Some(enemies) = self.respawned_enemies() {
             self.map.extend(enemies);
@@ -75,4 +70,3 @@ impl Enemies {
         self.map.get_mut(&id)
     }
 }
-

@@ -2,23 +2,17 @@ use crate::{
     c_str,
     cg::{camera::Camera, model::Model},
     game::{
-        drawable::Drawable,
-        enemies::Enemies,
-        flight::steerable::Steerable,
-        missile::EnemyID,
-        targeting_data::{self, TargetingData},
-        terrain::Terrain,
+        drawable::Drawable, enemies::Enemies, flight::steerable::Steerable,
+        targeting_data::TargetingData,
     },
     GLFW_TIME,
 };
-use cgmath::{vec3, Deg, EuclideanSpace, InnerSpace, Matrix4, MetricSpace, SquareMatrix, Vector3};
-use lazy_static::{__Deref, lazy_static};
-use log::warn;
+use cgmath::{Deg, InnerSpace, Matrix4, MetricSpace, SquareMatrix};
+use lazy_static::lazy_static;
 use std::{
     ffi::CStr,
     ops::{Div, Mul},
 };
-use vek::{QuadraticBezier2, QuadraticBezier3, Vec3};
 
 lazy_static! {
     static ref TARGET_RECTANGLE: Model = {

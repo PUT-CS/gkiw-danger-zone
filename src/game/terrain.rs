@@ -1,11 +1,10 @@
 use super::{drawable::Drawable, modeled::Modeled};
 use crate::cg::{model::Model, shader::Shader};
 use cgmath::Point2;
-use itertools::{Itertools, MinMaxResult};
-use lazy_static::{lazy_static, __Deref};
-use log::{info, warn};
-use std::ops::Range;
+use lazy_static::lazy_static;
+use log::info;
 use std::collections::HashMap;
+use std::ops::Range;
 
 lazy_static! {
     static ref TERRAINS: HashMap<TerrainType, &'static str> =
@@ -15,31 +14,30 @@ lazy_static! {
 
 #[derive(Hash, PartialEq, Eq)]
 pub enum TerrainType {
-    Ocean,
     Desert,
 }
 
 pub struct Bounds {
     pub x: Range<i32>,
-    pub z: Range<i32>
+    pub z: Range<i32>,
 }
 
 pub struct Terrain {
     pub model: Model,
     pub heights: HashMap<Point2<i32>, f32>,
-    pub bounds: Bounds
+    pub bounds: Bounds,
 }
 
 impl Terrain {
     pub fn new(path: &str, type_: TerrainType) -> Self {
         info!("Creating new Terrain with template: {path}",);
-        let model =  Model::new(TERRAINS.get(&type_).expect("Path for terrain kind exists"));
+        let model = Model::new(TERRAINS.get(&type_).expect("Path for terrain kind exists"));
         let heights = Terrain::heights_of(&model);
         let bounds = model.bounds();
         Terrain {
             model,
             heights,
-            bounds
+            bounds,
         }
     }
     fn heights_of(terrain_model: &Model) -> HashMap<Point2<i32>, f32> {
@@ -52,7 +50,7 @@ impl Terrain {
         defined_points
     }
     pub fn height_at(&self, pos: &Point2<i32>) -> f32 {
-        *self.heights.get(pos).unwrap_or_else(|| &0.) + self.model.transformation.translation.y + 0.8
+        *self.heights.get(pos).unwrap_or(&0.) + self.model.transformation.translation.y + 0.8
     }
 }
 
@@ -61,7 +59,7 @@ impl Default for Terrain {
         let path = TERRAINS
             .get(&TerrainType::Desert)
             .expect("No path for that terrain");
-        Terrain::new(&path, TerrainType::Desert)
+        Terrain::new(path, TerrainType::Desert)
     }
 }
 

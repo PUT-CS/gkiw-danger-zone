@@ -1,6 +1,6 @@
-use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Array, Vector4};
+use cgmath::{Array, Matrix, Matrix4, Vector3, Vector4};
 use gl::types::*;
-use gl::{self, FALSE};
+use gl::{self};
 use log::info;
 use std::ffi::{CStr, CString};
 use std::fs::File;
@@ -75,27 +75,30 @@ impl Shader {
             mat.as_ptr(),
         );
     }
-    
+
     pub unsafe fn set_vector3(&self, name: &CStr, value: &Vector3<f32>) {
-        gl::Uniform3fv(gl::GetUniformLocation(self.id, name.as_ptr()), 1, value.as_ptr());
+        gl::Uniform3fv(
+            gl::GetUniformLocation(self.id, name.as_ptr()),
+            1,
+            value.as_ptr(),
+        );
     }
 
     pub unsafe fn set_vector4(&self, name: &CStr, value: &Vector4<f32>) {
-        gl::Uniform4fv(gl::GetUniformLocation(self.id, name.as_ptr()), 1, value.as_ptr());
+        gl::Uniform4fv(
+            gl::GetUniformLocation(self.id, name.as_ptr()),
+            1,
+            value.as_ptr(),
+        );
     }
 
     pub unsafe fn set_float(&self, name: &CStr, value: f32) {
         gl::Uniform1f(gl::GetUniformLocation(self.id, name.as_ptr()), value);
     }
 
-    pub unsafe fn set_int(&self, name: &CStr, value: i32) {
-        gl::Uniform1i(gl::GetUniformLocation(self.id, name.as_ptr()), value);
-    }
-    
     unsafe fn check_compile_errors(&self, shader: u32, type_: &str) {
         let mut success = gl::FALSE as GLint;
-        let mut info_log: Vec<u8> = Vec::with_capacity(1024);
-        info_log.set_len(1024 - 1); // subtract 1 to skip the trailing null character
+        let mut info_log = Vec::with_capacity(1024);
         if type_ != "PROGRAM" {
             gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut success);
             if success != gl::TRUE as GLint {
@@ -105,8 +108,8 @@ impl Shader {
                     ptr::null_mut(),
                     info_log.as_mut_ptr() as *mut GLchar,
                 );
-		info_log.iter().for_each(|c| print!("{}",char::from(*c)));
-		println!(
+                info_log.iter().for_each(|c| print!("{}", char::from(*c)));
+                println!(
                     "Shader compilation error of type: {}\n{}\n \
                           -- --------------------------------------------------- -- ",
                     type_,

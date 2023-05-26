@@ -51,27 +51,36 @@ impl Controls {
     }
     /// Compute a new value of the aircraft's pitch based on decay and set it as the new pitch bias
     pub fn apply_pitch_decay(&mut self) {
-        let delta_time = unsafe {DELTA_TIME};
+        let delta_time = unsafe { DELTA_TIME };
         self.pitch_bias = if self.pitch_bias.abs() > delta_time {
-            round(self.pitch_bias + (DECAY * delta_time) * self.pitch_bias.signum() * -1., 5)
+            round(
+                self.pitch_bias + (DECAY * delta_time) * self.pitch_bias.signum() * -1.,
+                5,
+            )
         } else {
             0.
         }
     }
     /// Compute a new value of the aircraft's yaw based on decay and set it as the new yaw bias
     pub fn apply_yaw_decay(&mut self) {
-        let delta_time = unsafe{DELTA_TIME};
+        let delta_time = unsafe { DELTA_TIME };
         self.yaw_bias = if self.yaw_bias.abs() > delta_time {
-            round(self.yaw_bias + (DECAY * delta_time) * self.yaw_bias.signum() * -1., 5)
+            round(
+                self.yaw_bias + (DECAY * delta_time) * self.yaw_bias.signum() * -1.,
+                5,
+            )
         } else {
             0.
         }
     }
     /// Compute a new value of the aircraft's roll based on decay and set it the as the new roll bias
     pub fn apply_roll_decay(&mut self) {
-        let delta_time = unsafe{DELTA_TIME};
+        let delta_time = unsafe { DELTA_TIME };
         self.roll_bias = if self.roll_bias.abs() > delta_time {
-            round(self.roll_bias + (DECAY * delta_time) * self.roll_bias.signum() * -1., 5)
+            round(
+                self.roll_bias + (DECAY * delta_time) * self.roll_bias.signum() * -1.,
+                5,
+            )
         } else {
             0.
         }

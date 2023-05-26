@@ -3,19 +3,12 @@ use std::collections::HashMap;
 #[derive(Hash, PartialEq, Eq)]
 pub enum IDKind {
     Enemy,
-    Sound
+    Sound,
 }
 
+#[derive(Default)]
 pub struct IDGenerator {
     ids: HashMap<IDKind, u32>,
-}
-
-impl Default for IDGenerator {
-    fn default() -> Self {
-        IDGenerator {
-            ids: HashMap::new(),
-        }
-    }
 }
 
 impl IDGenerator {

@@ -1,8 +1,4 @@
-use crate::audio::{
-    audio::Audio,
-    audio_manager::SoundEffect,
-    sound::SoundID,
-};
+use crate::audio::{audio::Audio, audio_manager::SoundEffect, sound::SoundID};
 
 pub struct TargetingSounds {
     pub current: Option<SoundID>,
@@ -10,9 +6,7 @@ pub struct TargetingSounds {
 
 impl TargetingSounds {
     pub fn new() -> Self {
-        Self {
-            current: None,
-        }
+        Self { current: None }
     }
 
     pub fn stop(&mut self, audio: &Audio) {

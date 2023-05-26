@@ -5,7 +5,7 @@ use crate::{
 };
 use cgmath::{Deg, EuclideanSpace, MetricSpace, Quaternion, Rotation3, Vector3};
 use itertools::Itertools;
-use log::{error, info, warn};
+use log::info;
 use rand::{thread_rng, Rng};
 
 const BULLET_SPEED: f32 = 1000.;
@@ -80,11 +80,11 @@ impl Guns {
                 }
             }
         }
-        return if !hit_enemies.is_empty() {
+        if !hit_enemies.is_empty() {
             Some(hit_enemies)
         } else {
             None
-        };
+        }
     }
 }
 
@@ -92,11 +92,6 @@ impl Drawable for Guns {
     unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
         self.bullets.iter().for_each(|b| b.model.draw(shader));
     }
-}
-
-enum BulletMessage {
-    None,
-    Terminate,
 }
 
 impl Bullet {
@@ -109,9 +104,8 @@ impl Bullet {
             termination_time: unsafe { GLFW_TIME + BULLET_TERMINATION_TIME },
         }
     }
-    fn update(&mut self) -> BulletMessage {
+    fn update(&mut self) {
         let delta_time = unsafe { DELTA_TIME };
         self.model.forward(BULLET_SPEED * delta_time);
-        BulletMessage::None
     }
 }

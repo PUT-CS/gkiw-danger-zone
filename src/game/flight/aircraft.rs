@@ -1,17 +1,19 @@
 use super::{control_surfaces::Controls, spec::AircraftSpec, steerable::Steerable};
 use crate::{
-    c_str,
-    cg::{camera::{ControlSurfaces, Camera}, model::Model, particles::ParticleGenerator, light::PointLight},
+    cg::{
+        camera::{Camera, ControlSurfaces},
+        model::Model,
+        particles::ParticleGenerator,
+    },
     game::{
-        drawable::Drawable, guns::Guns, modeled::Modeled, particle_generation::ParticleGeneration, game::TARGET_ENEMIES,
+        drawable::Drawable, guns::Guns, modeled::Modeled, particle_generation::ParticleGeneration,
     },
     gen_ref_getters, DELTA_TIME,
 };
-use cgmath::{Deg, EuclideanSpace, Quaternion, Vector3, Vector4};
+use cgmath::Vector4;
 use lazy_static::lazy_static;
 use log::info;
 use std::collections::HashMap;
-use std::ffi::CStr;
 use AircraftKind::*;
 
 const MAX_PITCH_BIAS: f32 = 35.;
@@ -24,7 +26,6 @@ pub struct Aircraft {
     model: Model,
     spec: AircraftSpec,
     controls: Controls,
-    kind: AircraftKind,
     particle_generator: ParticleGenerator,
     guns: Guns,
 }
@@ -33,7 +34,6 @@ gen_ref_getters! {
     Aircraft,
     model -> &Model,
     spec -> &AircraftSpec,
-    kind -> &AircraftKind,
     controls -> &Controls,
     guns -> &Guns,
 }
@@ -43,7 +43,6 @@ gen_ref_getters! {
 #[derive(Clone)]
 pub enum AircraftKind {
     Mig21,
-    F16,
 }
 
 lazy_static! {
@@ -64,7 +63,7 @@ impl ParticleGeneration for Aircraft {
 
 impl Drawable for Aircraft {
     unsafe fn draw(&self, shader: &crate::cg::shader::Shader) {
-	self.model().draw(shader);
+        self.model().draw(shader);
     }
 }
 
@@ -81,8 +80,7 @@ impl Aircraft {
     pub fn new(kind: AircraftKind) -> Self {
         info!("Creating new Aircraft of kind : {kind:?}");
         let model = Model::new(MODEL_PATHS.get(&kind).expect("Path not found for kind"));
-        let mut particle_generator = ParticleGenerator::new(1500, Vector4::new(1., 0., 0., 1.), 2.);
-        //particle_generator.disable();
+        let particle_generator = ParticleGenerator::new(1500, Vector4::new(1., 0., 0., 1.), 2.);
         Aircraft {
             model,
             spec: BLUEPRINTS
@@ -90,7 +88,6 @@ impl Aircraft {
                 .expect("Blueprint not found for kind")
                 .to_owned(),
             controls: Controls::default(),
-            kind,
             particle_generator,
             guns: Guns::new(),
         }
@@ -99,7 +96,7 @@ impl Aircraft {
     pub fn controls_mut(&mut self) -> &mut Controls {
         &mut self.controls
     }
-    
+
     pub fn model_mut(&mut self) -> &mut Model {
         &mut self.model
     }
@@ -166,7 +163,8 @@ impl Steerable for Aircraft {
             .clamp(-MAX_ROLL_BIAS, MAX_ROLL_BIAS);
     }
     /// Mutate the throttle
-    fn forward(&mut self, amount: f32) {            // TEMPORARY
+    fn forward(&mut self, amount: f32) {
+        // TEMPORARY
         *self.controls_mut().throttle_mut() += amount * 500. * STEERING_SENSITIVITY
     }
 }
