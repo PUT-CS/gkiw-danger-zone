@@ -1,9 +1,5 @@
-use super::flight::aircraft::{Aircraft, AircraftKind};
-use super::flight::steerable::Steerable;
-use super::missile::EnemyID;
-use super::terrain::Terrain;
-use crate::cg::consts::VEC_RIGHT;
-use crate::{gen_ref_getters, DELTA_TIME};
+use super::{flight::{aircraft::{Aircraft, AircraftKind}, steerable::Steerable}, missile::EnemyID, terrain::Terrain};
+use crate::{cg::consts::VEC_RIGHT, gen_ref_getters, DELTA_TIME};
 use cgmath::{EuclideanSpace, InnerSpace, Point3, Quaternion, Vector3};
 use rand::{thread_rng, Rng};
 use std::ops::Sub;

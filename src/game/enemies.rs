@@ -4,8 +4,7 @@ use super::{
     game::{ID_GENERATOR, TARGET_ENEMIES},
     missile::EnemyID,
 };
-use crate::game::flight::aircraft::AircraftKind::*;
-use crate::game::id_gen::IDKind;
+use crate::game::{flight::aircraft::AircraftKind::*, id_gen::IDKind};
 use log::info;
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;

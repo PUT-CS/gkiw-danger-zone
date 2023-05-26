@@ -1,16 +1,8 @@
-use super::enemies::Enemies;
-use super::flight::aircraft::{Aircraft, AircraftKind};
-use super::missile::EnemyID;
-use crate::audio::sound::SoundID;
-use crate::game::flight::steerable::Steerable;
-use crate::gen_ref_getters;
-use crate::{
-    cg::{
+use super::{enemies::Enemies, flight::aircraft::{Aircraft, AircraftKind}, missile::EnemyID};
+use crate::{audio::sound::SoundID, game::flight::steerable::Steerable, gen_ref_getters, cg::{
         camera::{Camera, ControlSurfaces, Movement, Movement::*},
         model::Model,
-    },
-    DELTA_TIME,
-};
+    }, DELTA_TIME};
 use cgmath::InnerSpace;
 use itertools::Itertools;
 use log::warn;

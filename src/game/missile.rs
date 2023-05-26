@@ -1,13 +1,9 @@
-use super::drawable::Drawable;
-use super::enemy::Enemy;
-use super::missile_guidance::GuidanceStatus;
-use super::modeled::Modeled;
-use crate::cg::consts::VEC_RIGHT;
-use crate::cg::particles::ParticleGenerator;
-use crate::game::flight::steerable::Steerable;
-use crate::game::particle_generation::ParticleGeneration;
-use crate::DELTA_TIME;
-use crate::{cg::camera::Camera, cg::model::Model};
+use super::{drawable::Drawable, enemy::Enemy, missile_guidance::GuidanceStatus, modeled::Modeled};
+use crate::{
+    cg::{camera::Camera, consts::VEC_RIGHT, model::Model, particles::ParticleGenerator},
+    game::{flight::steerable::Steerable, particle_generation::ParticleGeneration},
+    DELTA_TIME,
+};
 use cgmath::{EuclideanSpace, InnerSpace, MetricSpace, Point3, Quaternion, Vector3, Vector4};
 use log::info;
 use vek::{QuadraticBezier3, Vec3};

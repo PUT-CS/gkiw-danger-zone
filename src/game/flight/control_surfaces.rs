@@ -1,5 +1,4 @@
-use crate::cg::camera::ControlSurfaces;
-use crate::{gen_getters, DELTA_TIME};
+use crate::{cg::camera::ControlSurfaces, gen_getters, DELTA_TIME};
 
 const DECAY: f32 = 50.;
 

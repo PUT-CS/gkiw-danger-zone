@@ -1,37 +1,45 @@
-use crate::audio::audio::Audio;
-use crate::audio::audio_manager::{AudioManager, SoundEffect};
-use crate::audio::messages::AudioMessage;
-use crate::cg::light::{DirectionalLight, PointLight};
-use crate::game::targeting_data::TargetingData;
-use crate::{DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH};
-use glfw::ffi::glfwSwapInterval;
-use glfw::{Context, Glfw, Window, WindowEvent};
+use crate::{
+    audio::{
+        audio::Audio,
+        audio_manager::{AudioManager, SoundEffect},
+        messages::AudioMessage,
+    },
+    cg::light::{DirectionalLight, PointLight},
+    game::targeting_data::TargetingData,
+    DELTA_TIME, GLFW_TIME, SCR_HEIGHT, SCR_WIDTH,
+};
+use glfw::{ffi::glfwSwapInterval, Context, Glfw, Window, WindowEvent};
 use log::{info, warn};
 use rayon::ThreadPoolBuilder;
-use std::ops::Not;
-use std::sync::mpsc::{self, Receiver};
 extern crate glfw;
 use self::glfw::{Action, Key};
-use super::enemies::Enemies;
-use super::hud::hud::Hud;
-use super::missile::{EnemyID, MissileMessage};
-use super::missile_guidance::GuidanceStatus;
-use super::modeled::Modeled;
-use super::particle_generation::ParticleGeneration;
-use super::targeting_sounds::TargetingSounds;
-use super::terrain::Terrain;
-use super::{missile::Missile, player::Player};
-use crate::c_str;
-use crate::cg::camera::Movement;
-use crate::cg::model::Model;
-use crate::cg::shader::Shader;
-use crate::game::drawable::Drawable;
-use crate::game::id_gen::IDGenerator;
-use crate::key_pressed;
+use super::{
+    enemies::Enemies,
+    hud::hud::Hud,
+    missile::{EnemyID, Missile, MissileMessage},
+    missile_guidance::GuidanceStatus,
+    modeled::Modeled,
+    particle_generation::ParticleGeneration,
+    player::Player,
+    targeting_sounds::TargetingSounds,
+    terrain::Terrain,
+};
+use crate::{
+    c_str,
+    cg::{camera::Movement, model::Model, shader::Shader},
+    game::{drawable::Drawable, id_gen::IDGenerator},
+    key_pressed,
+};
 use cgmath::{vec3, Deg, EuclideanSpace, Matrix4, Point3, SquareMatrix, Vector3, Vector4};
 use lazy_static::lazy_static;
-use std::ffi::CStr;
-use std::sync::Mutex;
+use std::{
+    ffi::CStr,
+    ops::Not,
+    sync::{
+        mpsc::{self, Receiver},
+        Mutex,
+    },
+};
 
 pub const TARGET_ENEMIES: usize = 3;
 pub const MISSILE_COOLDOWN: f64 = 0.5;
