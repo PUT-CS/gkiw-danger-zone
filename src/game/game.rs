@@ -241,7 +241,7 @@ impl Game {
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         no_light_shader.use_program();
         self.setup_camera(no_light_shader);
-	self.missiles.iter_mut().for_each(|m| {
+        self.missiles.iter_mut().for_each(|m| {
             m.draw_particles(no_light_shader);
         });
         shader.use_program();
@@ -250,19 +250,22 @@ impl Game {
         //point light
 
         if let Some(data) = &self.targeting_data {
-            if data.left_until_lock < 0. {
+            if data.left_until_lock <= 0. {
                 self.point_light.diffuse.x = 0.;
-	        self.point_light.diffuse.y = 1.;
+                self.point_light.diffuse.y = 1.;
             } else {
                 self.point_light.diffuse.x = 1.;
-	        self.point_light.diffuse.y = 0.;    
+                self.point_light.diffuse.y = 0.;
             }
+        } else {
+            self.point_light.diffuse.x = 1.;
+            self.point_light.diffuse.y = 0.;
         }
 
         self.setup_point_light(shader);
 
         self.setup_camera(shader);
-        
+
         // Drawing game objects starts here
         self.terrain.draw(&shader);
         self.skybox.draw(&shader);
@@ -284,9 +287,9 @@ impl Game {
         shader.set_mat4(c_str!("view"), &Matrix4::identity());
         self.player.cockpit.draw(&shader);
 
-	//Drawing hud
+        //Drawing hud
         no_light_shader.use_program();
-	no_light_shader.set_vector4(c_str!("ParticleColor"), &Vector4::new(1., 1., 1., 1.));
+        no_light_shader.set_vector4(c_str!("ParticleColor"), &Vector4::new(1., 1., 1., 1.));
         self.hud.draw(no_light_shader);
     }
 
@@ -427,7 +430,8 @@ impl Game {
             self.targeting_sounds
                 .play(SoundEffect::Seeking, &self.audio);
 
-            self.last_launch_time = unsafe { GLFW_TIME }
+            self.last_launch_time = unsafe { GLFW_TIME };
+            self.targeting_data = None;
         }
     }
 

@@ -2,6 +2,7 @@ use super::missile::EnemyID;
 
 const LOCKING_TIME: f64 = 4.0;
 
+#[derive(Debug)]
 pub struct TargetingData {
     pub target_id: EnemyID,
     pub left_until_lock: f64
