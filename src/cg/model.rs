@@ -1,32 +1,27 @@
-use super::consts::VEC_FRONT;
-use super::consts::VEC_RIGHT;
-use super::consts::VEC_UP;
-use super::texture::Texture;
-use super::transformation::Transformation;
-use super::vertex::Vertex;
-use crate::c_str;
-use crate::cg::shader::Shader;
-use crate::game::drawable::Drawable;
-use crate::game::flight::steerable::Steerable;
-use crate::game::terrain::Bounds;
-use crate::offset_of;
-use cgmath::prelude::*;
-use cgmath::Deg;
-use cgmath::Quaternion;
-use cgmath::{vec2, vec3};
+use super::{
+    consts::{VEC_FRONT, VEC_RIGHT, VEC_UP},
+    texture::Texture,
+    transformation::Transformation,
+    vertex::Vertex,
+};
+use crate::{
+    c_str,
+    cg::shader::Shader,
+    game::{drawable::Drawable, flight::steerable::Steerable, terrain::Bounds},
+    offset_of,
+};
+use cgmath::{prelude::*, vec2, vec3, Deg, Quaternion};
 use gl;
-use image;
-use image::DynamicImage::*;
-use image::GenericImage;
-use itertools::Itertools;
-use itertools::MinMaxResult;
+use image::{DynamicImage::*, GenericImage};
+use itertools::{Itertools, MinMaxResult};
 use log::error;
-use std::ffi::CStr;
-use std::ffi::CString;
-use std::mem::size_of;
-use std::os::raw::c_void;
-use std::path::Path;
-use std::ptr;
+use std::{
+    ffi::{CStr, CString},
+    mem::size_of,
+    os::raw::c_void,
+    path::Path,
+    ptr,
+};
 use tobj;
 use vek::Vec3;
 
@@ -38,7 +33,7 @@ type Matrix4 = cgmath::Matrix4<f32>;
 pub struct Model {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
-    pub textures: Vec<Texture>,
+    pub texture: Texture,
     pub vao: u32,
     vbo: u32,
     ebo: u32,
@@ -54,7 +49,7 @@ impl Default for Model {
         Model {
             vertices: vec![],
             indices: vec![],
-            textures: vec![],
+            texture: Texture::default(),
             vao: u32::MAX,
             vbo: u32::MAX,
             ebo: u32::MAX,
@@ -105,42 +100,20 @@ impl Drawable for Model {
         );
         // set material properties
         shader.set_float(c_str!("material.shininess"), self.shininess);
+
         // bind appropriate textures
-        let mut diffuse_nr = 0;
-        let mut specular_nr = 0;
-        let mut normal_nr = 0;
-        let mut height_nr = 0;
-        for (i, texture) in self.textures.iter().enumerate() {
-            gl::ActiveTexture(gl::TEXTURE0 + i as u32);
-            let name = &texture.type_;
-            let number = match name.as_str() {
-                "texture_diffuse" => {
-                    diffuse_nr += 1;
-                    diffuse_nr
-                }
-                "texture_specular" => {
-                    specular_nr += 1;
-                    specular_nr
-                }
-                "texture_normal" => {
-                    normal_nr += 1;
-                    normal_nr
-                }
-                "texture_height" => {
-                    height_nr += 1;
-                    height_nr
-                }
-                _ => panic!("unknown texture type"),
-            };
-            // set the sampler to the correct texture unit
-            let sampler = CString::new(format!("{}{}", name, number)).unwrap();
-            gl::Uniform1i(
-                gl::GetUniformLocation(shader.id, sampler.as_ptr()),
-                i as i32,
-            );
-            // bind the texture
-            gl::BindTexture(gl::TEXTURE_2D, texture.id);
-        }
+        let texture = &self.texture;
+        let name = &texture.type_;
+        let number = 0;
+
+        // select the texture
+        let sampler = CString::new(format!("{}{}", name, number)).unwrap();
+        gl::Uniform1i(
+            gl::GetUniformLocation(shader.id, sampler.as_ptr()),
+            0 as i32,
+        );
+        // bind the texture
+        gl::BindTexture(gl::TEXTURE_2D, texture.id);
 
         // draw mesh
         gl::BindVertexArray(self.vao);
@@ -150,10 +123,6 @@ impl Drawable for Model {
             gl::UNSIGNED_INT,
             ptr::null(),
         );
-        gl::BindVertexArray(0);
-
-        // always good practice to set everything back to defaults once configured.
-        gl::ActiveTexture(gl::TEXTURE0);
     }
 }
 
@@ -177,7 +146,6 @@ impl Model {
         // and only then we scale. Messing up this order results in
         // unexpected results like the model rotating around world origin
         // instead of its own local axis
-        //s * t * r
         t * s * r
     }
 
@@ -277,57 +245,35 @@ impl Model {
 
         let obj = tobj::load_obj(path);
         let (models, materials) = obj.unwrap();
+        let mesh = &models[0].mesh;
+        let num_vertices = mesh.positions.len() / 3;
 
-        for model in models {
-            let mesh = &model.mesh;
-            let num_vertices = mesh.positions.len() / 3;
+        // data to fill
+        let mut vertices: Vec<Vertex> = Vec::with_capacity(num_vertices);
+        let indices: Vec<u32> = mesh.indices.clone();
 
-            // data to fill
-            let mut vertices: Vec<Vertex> = Vec::with_capacity(num_vertices);
-            let indices: Vec<u32> = mesh.indices.clone();
-
-            let (p, n, t) = (&mesh.positions, &mesh.normals, &mesh.texcoords);
-            for i in 0..num_vertices {
-                vertices.push(Vertex {
-                    position: vec3(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]),
-                    normal: vec3(n[i * 3], n[i * 3 + 1], n[i * 3 + 2]),
-                    tex_coords: vec2(t[i * 2], t[i * 2 + 1]),
-                    ..Vertex::default()
-                })
-            }
-
-            let mut textures = Vec::new();
-            if let Some(material_id) = mesh.material_id {
-                let material = &materials[material_id];
-
-                if !material.diffuse_texture.is_empty() {
-                    let texture =
-                        self.load_material_texture(&material.diffuse_texture, "texture_diffuse");
-                    textures.push(texture);
-                }
-                if !material.specular_texture.is_empty() {
-                    let texture =
-                        self.load_material_texture(&material.specular_texture, "texture_specular");
-                    textures.push(texture);
-                }
-                if !material.normal_texture.is_empty() {
-                    let texture =
-                        self.load_material_texture(&material.normal_texture, "texture_normal");
-                    textures.push(texture);
-                }
-            }
-            self.vertices = vertices;
-            self.indices = indices;
-            self.textures = textures;
+        let (p, n, t) = (&mesh.positions, &mesh.normals, &mesh.texcoords);
+        for i in 0..num_vertices {
+            vertices.push(Vertex {
+                position: vec3(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]),
+                normal: vec3(n[i * 3], n[i * 3 + 1], n[i * 3 + 2]),
+                tex_coords: vec2(t[i * 2], t[i * 2 + 1]),
+                ..Vertex::default()
+            })
         }
+
+        let material_id = mesh.material_id.unwrap();
+        let material = &materials[material_id];
+        let texture = self.load_material_texture(&material.diffuse_texture, "texture_diffuse");
+        self.vertices = vertices;
+        self.indices = indices;
+        self.texture = texture;
     }
 
     fn load_material_texture(&mut self, path: &str, type_name: &str) -> Texture {
-        {
-            let texture = self.textures_loaded.iter().find(|t| t.path == path);
-            if let Some(texture) = texture {
-                return texture.clone();
-            }
+        let texture = self.textures_loaded.iter().find(|t| t.path == path);
+        if let Some(texture) = texture {
+            return texture.clone();
         }
 
         let texture = Texture {
@@ -339,16 +285,13 @@ impl Model {
         texture
     }
 
-    pub fn reload_mesh(&mut self) {
-        unsafe { self.setup_mesh() };
-    }
-
     unsafe fn setup_mesh(&mut self) {
         // create buffers/arrays
         gl::GenVertexArrays(1, &mut self.vao);
         gl::GenBuffers(1, &mut self.vbo);
         gl::GenBuffers(1, &mut self.ebo);
 
+        // select this model's objects
         gl::BindVertexArray(self.vao);
         gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
         let size = (self.vertices.len() * size_of::<Vertex>()) as isize;
